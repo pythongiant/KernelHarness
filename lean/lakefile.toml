@@ -3,7 +3,7 @@ version = "0.1.0"
 defaultTargets = ["Harness"]
 
 # Byte-level PTX model: core Lean only. Specs are over ByteMap (UInt8), not ℝ, so
-# Mathlib is not required. See lean/README.md for the optional Mathlib manifest
+# Mathlib is not required. See docs/reference.md (The Lean model) for the optional Mathlib manifest
 # (lakefile.mathlib.toml) used when an environment has disk for the cache.
 # Generated per-variant modules live in `Harness/Generated/` and are checked
 # individually by the verifier (`lake env lean Harness/Generated/<V>.lean`), so they

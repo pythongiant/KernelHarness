@@ -1,17 +1,23 @@
-# A user-supplied kernel: `source` points at a file instead of a template ladder.
-# The harness profiles it, diagnoses it, and commits the round; optimisation stops
-# because there is no ladder for `family = "user"`.
+# Example: register a kernel you wrote yourself (family = "user").
+#
+#   cp -r examples/custom_kernel harness/kernels/custom_affine_fast
+#   uv run harness run --kernel custom_affine_fast --gpu H100 --max-rounds 2
+#
+# The harness measures it, checks its output against the `reference` below, diagnoses
+# it and commits the round. It does not optimise or prove it: a "user" kernel has no
+# template ladder and no lowering, so the run reports NO_TRANSFORM_AVAILABLE and the
+# proof is UNSUPPORTED. Use a laddered family (or add a lowering) for those.
 id = "custom_affine_fast"
 family = "user"
 entry = "launch_kernel"
-source = "kernel.cu"
-reference = "elementwise"          # which numpy reference this kernel implements
-shape = { N = 4194304, a = 10, b = 3 }
+source = "kernel.cu"               # path relative to this manifest
+reference = "elementwise"          # numpy reference the output is compared against
+shape = { N = 4194304, a = 10, b = 3 }   # evaluated by harness/launch.py
 dtype = "s32"
-sol = { kind = "bandwidth", bytes = "8*N", flops = "0" }   # read x, write out
-buffers = ["x", "out"]
+sol = { kind = "bandwidth", bytes = "8*N", flops = "0" }   # roofline: read x, write out
+buffers = ["x", "out"]             # order must match p.buf[i] in kernel.cu
 out_index = 1
-tol = { rtol = 0.0, atol = 0.0 }
+tol = { rtol = 0.0, atol = 0.0 }   # exact for s32
 spec_lean = "Harness.Specs.affine"
-baseline = "torch"
+baseline = "torch"                 # or "none"
 level = 0

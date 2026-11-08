@@ -1,4 +1,4 @@
-# runtime state and the ledger repository (a separate git repo, see docs/operations.md)
+# runtime state and the ledger repository (a separate git repo, see docs/reference.md)
 .harness/
 ledgers/
 

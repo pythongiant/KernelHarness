@@ -15,16 +15,21 @@ jobs:
         with:
           python-version: "3.13"
       - run: uv sync --extra dev
+      - name: lint
+        run: |
+          uv run ruff check .
+          uv run ruff format --check .
       - run: uv run pytest
       - name: cli smoke (offline loop, ledger artifacts)
         run: |
           uv run harness init
-          uv run harness registry
           uv run harness run --kernel elementwise_affine --backend sim --max-rounds 1
-          RUN=$(uv run python -c "import sqlite3; c = sqlite3.connect('.harness/harness.db'); print(c.execute('SELECT id FROM runs ORDER BY created_at DESC LIMIT 1').fetchone()[0])")
+          RUN=$(uv run harness runs -q -n 1)
           uv run harness report --run "$RUN"
           test -f "ledgers/runs/$RUN/round-00/profile.json"
-          test -f "ledgers/runs/$RUN/REPORT.md"
+          test -f "ledgers/REPORT.md"
+          git -C ledgers log --oneline | grep -q "report: $RUN"
+          test -z "$(git status --porcelain)"   # the source tree stays clean
 
   lean:
     name: lean model + axiom audit
