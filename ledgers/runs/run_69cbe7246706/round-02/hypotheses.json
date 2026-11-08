@@ -1,0 +1,16 @@
+[
+  {
+    "source": "catalog",
+    "bottleneck_code": "MEM_BW_BOUND",
+    "transform_id": "streaming_stores",
+    "title": "streaming_stores for MEM_BW_BOUND",
+    "rationale_md": "The output buffer is never read again, but the default store allocates the line in L2\nfirst (write-allocate). `st.global.cs` (via `__stcs`) marks the line as streaming so it\nis evicted early, removing the extra read-modify-write traffic that the profiler shows\nas excess DRAM bytes.",
+    "refs": [
+      "PTX ISA: cache operators on st"
+    ],
+    "expected_effect": "avoid L2 write-allocate traffic on a streaming output",
+    "severity": "low",
+    "level": 2,
+    "id": 2
+  }
+]

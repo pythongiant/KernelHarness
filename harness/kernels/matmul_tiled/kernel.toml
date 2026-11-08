@@ -1,0 +1,13 @@
+id = "matmul_tiled"
+family = "gemm"
+entry = "launch_kernel"
+source = "@@TEMPLATE@@"
+shape = { M = 512, K = 512, N_out = 512 }
+dtype = "f32"
+sol = { kind = "compute", bytes = "4*(M*K + K*N_out + M*N_out)", flops = "2*M*K*N_out" }
+buffers = ["A", "B", "C"]
+out_index = 2
+tol = { rtol = 0.02, atol = 0.5 }
+spec_lean = "Harness.Specs.matmul"
+baseline = "torch"
+level = 1

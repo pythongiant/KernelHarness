@@ -1,0 +1,12 @@
+{
+  "run_id": "run_e18357827eae",
+  "kernel_id": "matmul_tiled",
+  "gpu": "H100",
+  "backend": "modal",
+  "status": "stalled",
+  "stop_reason": "STALLED",
+  "rows": 1,
+  "best_sol_pct": 9.13,
+  "p50_ms": 0.043872,
+  "verified": 0
+}

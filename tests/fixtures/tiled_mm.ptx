@@ -1,0 +1,23 @@
+.version 8.0
+.target sm_90a
+.address_size 64
+
+.visible .entry tiled_mm(
+    .param .u64 param_a,
+    .param .u64 param_b
+)
+{
+    .reg .u32 %r<16>;
+    .reg .u64 %rd<8>;
+
+    ld.param.u64 %rd1, [param_a];
+    ld.param.u64 %rd2, [param_b];
+    bar.sync 0;
+    cp.async.ca.shared.global [%rd1], [%rd2], 16;
+    cp.async.commit_group;
+    cp.async.wait_group 0;
+    ldmatrix.sync.aligned.m8n8.x4.shared.b16 {%r1, %r2, %r3, %r4}, [%rd1];
+    mma.sync.aligned.m16n8k16.row.col.f32.f16.f16.f32 {%r5, %r6}, {%r1, %r2}, {%r3}, {%r7};
+    bar.sync 0;
+    ret;
+}

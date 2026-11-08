@@ -1,0 +1,10 @@
+.version 8.0
+.target sm_90a
+
+.visible .entry bad()
+{
+    .reg .u32 %r<2>;
+    mov.u32 %r1, 1;
+    fancy.new.opcode %r2, %r1;
+    ret;
+}

@@ -1,0 +1,17 @@
+# A user-supplied kernel: `source` points at a file instead of a template ladder.
+# The harness profiles it, diagnoses it, and commits the round; optimisation stops
+# because there is no ladder for `family = "user"`.
+id = "custom_affine_fast"
+family = "user"
+entry = "launch_kernel"
+source = "kernel.cu"
+reference = "elementwise"          # which numpy reference this kernel implements
+shape = { N = 4194304, a = 10, b = 3 }
+dtype = "s32"
+sol = { kind = "bandwidth", bytes = "8*N", flops = "0" }   # read x, write out
+buffers = ["x", "out"]
+out_index = 1
+tol = { rtol = 0.0, atol = 0.0 }
+spec_lean = "Harness.Specs.affine"
+baseline = "torch"
+level = 0

@@ -1,0 +1,569 @@
+# The 81 PTX forms modelled by the harness. `lean_ctor` must name a
+# constructor of `Harness.PTX.Op`; `parse.py` rejects any opcode absent here.
+
+[[form]]
+op = "mov"
+quals = ["ty"]
+operands = "d,a"
+semantics = "arith"
+lean_ctor = "Op.mov"
+
+[[form]]
+op = "add"
+quals = ["ty"]
+operands = "d,a,b"
+semantics = "arith"
+lean_ctor = "Op.add"
+
+[[form]]
+op = "sub"
+quals = ["ty"]
+operands = "d,a,b"
+semantics = "arith"
+lean_ctor = "Op.sub"
+
+[[form]]
+op = "mul"
+quals = ["ty"]
+operands = "d,a,b"
+semantics = "arith"
+lean_ctor = "Op.mul"
+
+[[form]]
+op = "mad"
+quals = ["ty"]
+operands = "d,a,b,c"
+semantics = "arith"
+lean_ctor = "Op.mad"
+
+[[form]]
+op = "div"
+quals = ["ty"]
+operands = "d,a,b"
+semantics = "arith"
+lean_ctor = "Op.div"
+
+[[form]]
+op = "rem"
+quals = ["ty"]
+operands = "d,a,b"
+semantics = "arith"
+lean_ctor = "Op.rem"
+
+[[form]]
+op = "setp"
+quals = ["ty", "cmp"]
+operands = "d,a,b"
+semantics = "arith"
+lean_ctor = "Op.setp"
+
+[[form]]
+op = "selp"
+quals = ["ty"]
+operands = "d,c,a,b"
+semantics = "arith"
+lean_ctor = "Op.selp"
+
+[[form]]
+op = "shl"
+quals = ["ty"]
+operands = "d,a,b"
+semantics = "arith"
+lean_ctor = "Op.shl"
+
+[[form]]
+op = "shr"
+quals = ["ty"]
+operands = "d,a,b"
+semantics = "arith"
+lean_ctor = "Op.shr"
+
+[[form]]
+op = "and"
+quals = ["ty"]
+operands = "d,a,b"
+semantics = "arith"
+lean_ctor = "Op.and_"
+
+[[form]]
+op = "or"
+quals = ["ty"]
+operands = "d,a,b"
+semantics = "arith"
+lean_ctor = "Op.or_"
+
+[[form]]
+op = "xor"
+quals = ["ty"]
+operands = "d,a,b"
+semantics = "arith"
+lean_ctor = "Op.xor_"
+
+[[form]]
+op = "not"
+quals = ["ty"]
+operands = "d,a"
+semantics = "arith"
+lean_ctor = "Op.not_"
+
+[[form]]
+op = "neg"
+quals = ["ty"]
+operands = "d,a"
+semantics = "arith"
+lean_ctor = "Op.neg"
+
+[[form]]
+op = "abs"
+quals = ["ty"]
+operands = "d,a"
+semantics = "arith"
+lean_ctor = "Op.abs"
+
+[[form]]
+op = "min"
+quals = ["ty"]
+operands = "d,a,b"
+semantics = "arith"
+lean_ctor = "Op.min_"
+
+[[form]]
+op = "max"
+quals = ["ty"]
+operands = "d,a,b"
+semantics = "arith"
+lean_ctor = "Op.max_"
+
+[[form]]
+op = "cvt"
+quals = ["from", "to"]
+operands = "d,a"
+semantics = "arith"
+lean_ctor = "Op.cvt"
+
+[[form]]
+op = "bra"
+quals = []
+operands = "target"
+semantics = "branch"
+lean_ctor = "Op.bra"
+
+[[form]]
+op = "bra.uni"
+quals = []
+operands = "target"
+semantics = "branch"
+lean_ctor = "Op.braUni"
+
+[[form]]
+op = "ret"
+quals = []
+operands = ""
+semantics = "branch"
+lean_ctor = "Op.ret"
+
+[[form]]
+op = "exit"
+quals = []
+operands = ""
+semantics = "branch"
+lean_ctor = "Op.exit"
+
+[[form]]
+op = "bar.warp.sync"
+quals = []
+operands = "mask"
+semantics = "bar"
+lean_ctor = "Op.barWarpSync"
+
+[[form]]
+op = "ld"
+quals = ["space", "ty", "vec", "cache"]
+operands = "d,[a]"
+semantics = "read"
+lean_ctor = "Op.ld"
+
+[[form]]
+op = "st"
+quals = ["space", "ty", "vec", "cache"]
+operands = "[a],b"
+semantics = "write"
+lean_ctor = "Op.st"
+
+[[form]]
+op = "ld.global.nc"
+quals = ["ty", "vec"]
+operands = "d,[a]"
+semantics = "read"
+lean_ctor = "Op.ldGlobalNc"
+
+[[form]]
+op = "st.global.cs"
+quals = ["ty", "vec"]
+operands = "[a],b"
+semantics = "write"
+lean_ctor = "Op.stGlobalCs"
+
+[[form]]
+op = "membar"
+quals = ["scope"]
+operands = ""
+semantics = "bar"
+lean_ctor = "Op.membar"
+
+[[form]]
+op = "fence.sc"
+quals = []
+operands = ""
+semantics = "bar"
+lean_ctor = "Op.fenceSc"
+
+[[form]]
+op = "fence.proxy.async"
+quals = []
+operands = ""
+semantics = "bar"
+lean_ctor = "Op.fenceProxyAsync"
+
+[[form]]
+op = "fence.proxy.tensormap"
+quals = []
+operands = ""
+semantics = "bar"
+lean_ctor = "Op.fenceProxyTensormap"
+
+[[form]]
+op = "atom"
+quals = ["sem", "scope", "aop", "ty"]
+operands = "d,[a],b"
+semantics = "atom"
+lean_ctor = "Op.atom"
+
+[[form]]
+op = "red"
+quals = ["sem", "scope", "aop", "ty"]
+operands = "[a],b"
+semantics = "atom"
+lean_ctor = "Op.red"
+
+[[form]]
+op = "cp.async.ca.shared.global"
+quals = ["bytes"]
+operands = "[d],[a]"
+semantics = "async"
+lean_ctor = "Op.cpAsyncCa"
+
+[[form]]
+op = "cp.async.cg.shared.global"
+quals = ["bytes"]
+operands = "[d],[a]"
+semantics = "async"
+lean_ctor = "Op.cpAsyncCg"
+
+[[form]]
+op = "cp.async.commit_group"
+quals = []
+operands = ""
+semantics = "async"
+lean_ctor = "Op.cpAsyncCommitGroup"
+
+[[form]]
+op = "cp.async.wait_group"
+quals = ["n"]
+operands = ""
+semantics = "async"
+lean_ctor = "Op.cpAsyncWaitGroup"
+
+[[form]]
+op = "mma.sync.aligned.m16n8k16.row.col.f32.f16.f16.f32"
+quals = []
+operands = "d,a,b,c"
+semantics = "read"
+lean_ctor = "Op.mmaSyncM16n8k16"
+
+[[form]]
+op = "ldmatrix.sync.aligned.m8n8.x4.shared.b16"
+quals = []
+operands = "d,[a]"
+semantics = "read"
+lean_ctor = "Op.ldmatrixX4"
+
+[[form]]
+op = "bar.sync"
+quals = ["n"]
+operands = ""
+semantics = "bar"
+lean_ctor = "Op.barSync"
+
+[[form]]
+op = "bar.arrive"
+quals = ["n"]
+operands = ""
+semantics = "bar"
+lean_ctor = "Op.barArrive"
+
+[[form]]
+op = "cp.async.bulk.tensor.2d.shared::cluster.global.tile"
+quals = []
+operands = "[d],[a],mbar"
+semantics = "async"
+lean_ctor = "Op.cpAsyncBulkTensor2d"
+
+[[form]]
+op = "cp.async.bulk.commit_group"
+quals = []
+operands = ""
+semantics = "async"
+lean_ctor = "Op.cpAsyncBulkCommitGroup"
+
+[[form]]
+op = "cp.async.bulk.wait_group"
+quals = ["n"]
+operands = ""
+semantics = "async"
+lean_ctor = "Op.cpAsyncBulkWaitGroup"
+
+[[form]]
+op = "mbarrier.init"
+quals = []
+operands = "[a],count"
+semantics = "mbar"
+lean_ctor = "Op.mbarrierInit"
+
+[[form]]
+op = "mbarrier.arrive"
+quals = []
+operands = "[a],state"
+semantics = "mbar"
+lean_ctor = "Op.mbarrierArrive"
+
+[[form]]
+op = "mbarrier.arrive.expect_tx"
+quals = []
+operands = "[a],tx"
+semantics = "mbar"
+lean_ctor = "Op.mbarrierArriveExpectTx"
+
+[[form]]
+op = "mbarrier.try_wait.parity"
+quals = []
+operands = "[a],phase"
+semantics = "mbar"
+lean_ctor = "Op.mbarrierTryWaitParity"
+
+[[form]]
+op = "mbarrier.wait.parity"
+quals = []
+operands = "[a],phase"
+semantics = "mbar"
+lean_ctor = "Op.mbarrierWaitParity"
+
+[[form]]
+op = "wgmma.fence"
+quals = []
+operands = ""
+semantics = "wgmma"
+lean_ctor = "Op.wgmmaFence"
+
+[[form]]
+op = "wgmma.mma_async.sync.aligned.m64n8k16.f32.f16.f16"
+quals = []
+operands = "d,a,b,c"
+semantics = "wgmma"
+lean_ctor = "Op.wgmmaMmaAsyncM64n8k16"
+
+[[form]]
+op = "wgmma.commit_group"
+quals = []
+operands = ""
+semantics = "wgmma"
+lean_ctor = "Op.wgmmaCommitGroup"
+
+[[form]]
+op = "wgmma.wait_group"
+quals = ["n"]
+operands = ""
+semantics = "wgmma"
+lean_ctor = "Op.wgmmaWaitGroup"
+
+[[form]]
+op = "shfl.sync.idx.b32"
+quals = []
+operands = "d,a,b,c,mask"
+semantics = "shfl"
+lean_ctor = "Op.shflSyncIdx"
+
+[[form]]
+op = "shfl.sync.up.b32"
+quals = []
+operands = "d,a,b,c,mask"
+semantics = "shfl"
+lean_ctor = "Op.shflSyncUp"
+
+[[form]]
+op = "shfl.sync.down.b32"
+quals = []
+operands = "d,a,b,c,mask"
+semantics = "shfl"
+lean_ctor = "Op.shflSyncDown"
+
+[[form]]
+op = "shfl.sync.bfly.b32"
+quals = []
+operands = "d,a,b,c,mask"
+semantics = "shfl"
+lean_ctor = "Op.shflSyncBfly"
+
+[[form]]
+op = "mapa"
+quals = ["space"]
+operands = "d,[a]"
+semantics = "arith"
+lean_ctor = "Op.mapa"
+
+[[form]]
+op = "cluster.sync"
+quals = []
+operands = ""
+semantics = "bar"
+lean_ctor = "Op.clusterSync"
+
+[[form]]
+op = "barrier.cluster.arrive"
+quals = []
+operands = ""
+semantics = "bar"
+lean_ctor = "Op.barrierClusterArrive"
+
+[[form]]
+op = "barrier.cluster.wait"
+quals = []
+operands = ""
+semantics = "bar"
+lean_ctor = "Op.barrierClusterWait"
+
+[[form]]
+op = "clusterlaunchcontrol.try_cancel"
+quals = []
+operands = "d,[a]"
+semantics = "branch"
+lean_ctor = "Op.clusterlaunchcontrolTryCancel"
+
+[[form]]
+op = "tcgen05.alloc"
+quals = []
+operands = "d,n"
+semantics = "wgmma"
+lean_ctor = "Op.tcgen05Alloc"
+
+[[form]]
+op = "tcgen05.mma"
+quals = []
+operands = "d,a,b,idesc"
+semantics = "wgmma"
+lean_ctor = "Op.tcgen05Mma"
+
+[[form]]
+op = "tcgen05.commit"
+quals = []
+operands = "mbar"
+semantics = "wgmma"
+lean_ctor = "Op.tcgen05Commit"
+
+[[form]]
+op = "tcgen05.wait"
+quals = []
+operands = ""
+semantics = "wgmma"
+lean_ctor = "Op.tcgen05Wait"
+
+[[form]]
+op = "tcgen05.ld"
+quals = []
+operands = "d,[a]"
+semantics = "read"
+lean_ctor = "Op.tcgen05Ld"
+
+[[form]]
+op = "tcgen05.st"
+quals = []
+operands = "[a],b"
+semantics = "write"
+lean_ctor = "Op.tcgen05St"
+
+[[form]]
+op = "tcgen05.fence"
+quals = []
+operands = ""
+semantics = "wgmma"
+lean_ctor = "Op.tcgen05Fence"
+
+[[form]]
+op = "ld.param"
+quals = ["ty"]
+operands = "d,[a]"
+semantics = "read"
+lean_ctor = "Op.paramLd"
+
+[[form]]
+op = "st.param"
+quals = ["ty"]
+operands = "[a],b"
+semantics = "write"
+lean_ctor = "Op.paramSt"
+
+[[form]]
+op = "membar.gl"
+quals = []
+operands = ""
+semantics = "bar"
+lean_ctor = "Op.membarGl"
+
+[[form]]
+op = "membar.cta"
+quals = []
+operands = ""
+semantics = "bar"
+lean_ctor = "Op.membarCta"
+
+[[form]]
+op = "fence.proxy.async.shared::cta"
+quals = []
+operands = ""
+semantics = "bar"
+lean_ctor = "Op.fenceProxyAsyncShared"
+
+[[form]]
+op = "cp.async.wait_all"
+quals = []
+operands = ""
+semantics = "async"
+lean_ctor = "Op.cpAsyncWaitAll"
+
+[[form]]
+op = "ldmatrix.sync.aligned.m8n8.x1.shared.b16"
+quals = []
+operands = "d,[a]"
+semantics = "read"
+lean_ctor = "Op.ldmatrixX1"
+
+[[form]]
+op = "ldmatrix.sync.aligned.m8n8.x2.shared.b16"
+quals = []
+operands = "d,[a]"
+semantics = "read"
+lean_ctor = "Op.ldmatrixX2"
+
+[[form]]
+op = "tcgen05.cp"
+quals = []
+operands = "[d],[a]"
+semantics = "wgmma"
+lean_ctor = "Op.tcgen05Cp"
+
+[[form]]
+op = "elect.sync"
+quals = []
+operands = "d,mask"
+semantics = "shfl"
+lean_ctor = "Op.electSync"

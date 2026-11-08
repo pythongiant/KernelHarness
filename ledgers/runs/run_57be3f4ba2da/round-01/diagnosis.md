@@ -1,0 +1,6 @@
+- **LOW_OCCUPANCY** (high): `occupancy_pct = 18.8%` is below the 50% threshold; the profiler names `registers` as the limiter (168 registers/thread, 0 B shared memory/block).
+- **COMPUTE_BOUND** (high): Roofline says compute-bound at `0.08%` of peak: `tflops = 0.05` of `67.00` TFLOPs for `4194304` FLOPs.
+- **NO_TENSOR_CORES** (high): Family `attention` but the instruction mix has no tensor-core MMA: `float×7, for×5, long×3, const×3, extern×2, int×2, #include×1, if×1`.
+- **SMALL_PROBLEM** (medium): `grid.x*grid.y = 256` is below `2 * sm_count = 264`: launch/tail overhead dominates.
+- **HIGH_REGISTERS** (medium): `regs_per_thread = 168` exceeds 96.
+- **UNVERIFIED** (high): Latest proof status is `UNSUPPORTED`; open goals: ['UNSUPPORTED: the model reasons about bit patterns and exact integer arithmetic; dtype `f32` needs IEEE rounding, which is outside its numerical scope (see numerical_scope).'].

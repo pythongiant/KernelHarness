@@ -1,0 +1,16 @@
+.harness/
+web/node_modules/
+web/tsconfig.tsbuildinfo
+web/dist/
+lean/.lake/
+lean/Harness/Generated/
+lean/.proof-logs/
+__pycache__/
+*.pyc
+.venv/
+*.o
+*.ptx
+!ledgers/**/*.ptx
+!tests/fixtures/*.ptx
+.lean-build/
+/proof/

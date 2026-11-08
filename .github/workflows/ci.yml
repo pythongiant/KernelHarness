@@ -1,0 +1,59 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  python:
+    name: python tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.13"
+      - run: uv sync --extra dev
+      - run: uv run pytest
+      - name: cli smoke (offline loop, ledger artifacts)
+        run: |
+          uv run harness init
+          uv run harness registry
+          uv run harness run --kernel elementwise_affine --backend sim --max-rounds 1
+          RUN=$(uv run python -c "import sqlite3; c = sqlite3.connect('.harness/harness.db'); print(c.execute('SELECT id FROM runs ORDER BY created_at DESC LIMIT 1').fetchone()[0])")
+          uv run harness report --run "$RUN"
+          test -f "ledgers/runs/$RUN/round-00/profile.json"
+          test -f "ledgers/runs/$RUN/REPORT.md"
+
+  lean:
+    name: lean model + axiom audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: install elan + Lean toolchain
+        run: |
+          curl -sSfL https://elan.lean-lang.org/elan-init.sh | sh -s -- -y
+          echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
+      - name: build the model
+        run: |
+          cd lean
+          lake build
+      - name: sanity proofs
+        run: |
+          cd lean
+          lake env lean Harness/Tests/BarrierExample.lean
+          lake env lean Harness/Tests/ObserverExample.lean
+      - name: axiom audit
+        run: |
+          cd lean
+          lake build Harness.Audit | tee /tmp/audit.log
+          grep -q AUDIT_OK /tmp/audit.log
+
+  web:
+    name: ui build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - run: cd web && bun install --frozen-lockfile && bun run build

@@ -1,0 +1,26 @@
+[
+  {
+    "n": 0,
+    "transform_id": null,
+    "sol_pct": 63.62,
+    "p50_ms": 0.015744,
+    "proof": "VERIFIED",
+    "sha": "9fe3c5a937e8b40620cd989c52af1042e91d6c47"
+  },
+  {
+    "n": 1,
+    "transform_id": "vectorize_x4",
+    "sol_pct": 82.81,
+    "p50_ms": 0.012096,
+    "proof": "VERIFIED",
+    "sha": "a38b60db1a99b4bec8f0880cd87f28dbcd0b202c"
+  },
+  {
+    "n": 2,
+    "transform_id": "streaming_stores",
+    "sol_pct": 94.28,
+    "p50_ms": 0.010624,
+    "proof": "VERIFIED",
+    "sha": "8cc786565bee69fa24c5e066ef70b1b0cb5377b4"
+  }
+]

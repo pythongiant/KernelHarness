@@ -1,0 +1,152 @@
+# Research catalog: bottleneck code -> ordered fix candidates.
+# `transform_id` must match a transform the optimizer can apply.
+
+[[entry]]
+code = "MEM_BW_BOUND"
+family = "elementwise"
+transform = "vectorize_x4"
+effect = "4x fewer memory requests, up to 4x effective bandwidth"
+rationale = """
+The kernel issues one 4-byte load and one 4-byte store per element, so the request
+count (not the byte count) is the limit: 32-byte sectors are half-used. Loading and
+storing `int4` lets one instruction move 16 bytes, cutting the number of memory
+instructions and sectors by 4x. The measured SOL is below the roofline because the
+request rate, not the byte rate, is saturated.
+"""
+refs = ["NVIDIA CUDA C++ Programming Guide: vector types", "Roofline: Williams, Waterman, Patterson (2008)"]
+level = 1
+
+[[entry]]
+code = "MEM_BW_BOUND"
+family = "elementwise"
+transform = "streaming_stores"
+effect = "avoid L2 write-allocate traffic on a streaming output"
+rationale = """
+The output buffer is never read again, but the default store allocates the line in L2
+first (write-allocate). `st.global.cs` (via `__stcs`) marks the line as streaming so it
+is evicted early, removing the extra read-modify-write traffic that the profiler shows
+as excess DRAM bytes.
+"""
+refs = ["PTX ISA: cache operators on st"]
+level = 2
+
+[[entry]]
+code = "MEM_BW_BOUND"
+family = "elementwise"
+transform = "grid_stride"
+effect = "amortize launch overhead and keep all SMs busy"
+rationale = """
+Occupancy is already maximal but the launch ramp dominates for short kernels; a
+grid-stride loop bounds the block count at the device's resident capacity so blocks are
+reused instead of launched, removing the tail and the ramp.
+"""
+refs = ["CUDA best practices: grid-stride loops"]
+level = 3
+
+[[entry]]
+code = "LOW_OCCUPANCY"
+transform = "launch_bound"
+effect = "cap registers, raise resident CTAs"
+rationale = """
+The compiler used more registers than the occupancy target allows, so fewer CTAs are
+resident per SM and there is not enough memory-level parallelism to saturate DRAM.
+`__launch_bounds__(256, 8)` forces the register budget down to 32/thread.
+"""
+refs = ["CUDA C++ Programming Guide: launch_bounds"]
+level = 2
+
+[[entry]]
+code = "LOW_OCCUPANCY"
+transform = "reduce_smem"
+effect = "raise CTAs per SM"
+rationale = """
+Shared memory per block caps resident CTAs. Narrowing the stage buffers (or dropping the
+staging ring) raises the CTA count per SM.
+"""
+refs = ["CUDA occupancy calculator documentation"]
+level = 1
+
+[[entry]]
+code = "NO_TENSOR_CORES"
+family = "gemm"
+transform = "mma_sync"
+effect = "TF32/FP16 tensor-core throughput"
+rationale = """
+The kernel is scalar: each FMA is issued on the FP32 pipe, so the achieved FLOPs are
+bounded by `tflops_fp32`. The operation is a matmul, so `mma.sync.m16n8k16` (or the
+`wmma` API) can retire 16x8x16 products per instruction on the tensor cores, moving the
+roofline knee by an order of magnitude.
+"""
+refs = ["PTX ISA 8.x: mma.sync", "CUDA C++ Programming Guide: wmma"]
+level = 2
+
+[[entry]]
+code = "NO_TENSOR_CORES"
+family = "gemm"
+transform = "wgmma"
+effect = "async warp-group MMA"
+rationale = """
+Even with `mma.sync`, each warp group waits for its operands. Hopper's
+`wgmma.mma_async` consumes operands directly from shared memory and runs asynchronously,
+so the shared→register staging disappears and MMA overlaps the next async copy.
+"""
+refs = ["PTX ISA 8.3: wgmma", "Hopper tuning guide"]
+level = 3
+
+[[entry]]
+code = "NO_ASYNC_COPY"
+transform = "cp_async_double_buffer"
+effect = "overlap global-to-shared copies with compute"
+rationale = """
+Tiles are copied with synchronous loads followed by `__syncthreads()`, so the memory
+pipeline is idle while the tensor cores run (and vice versa). Two `cp.async` stages plus
+a commit/wait pair overlap the next tile's copy with the current tile's MMA.
+"""
+refs = ["PTX ISA: cp.async", "CUDA C++ Programming Guide: asynchronous copies"]
+level = 2
+
+[[entry]]
+code = "UNCOALESCED"
+transform = "smem_tile"
+effect = "coalesced staging via shared memory"
+rationale = """
+Each thread reads a strided column, so a warp touches 32 different sectors. Staging the
+tile through shared memory makes the global accesses coalesced; only the shared-memory
+read stays strided.
+"""
+refs = ["CUDA best practices: shared memory tiling"]
+level = 1
+
+[[entry]]
+code = "UNCOALESCED"
+transform = "swizzle_128b"
+effect = "bank-conflict-free tiles"
+rationale = """
+The tiled staging pattern produces 32-way bank conflicts on the shared-memory read. A
+128-byte XOR swizzle spreads consecutive rows across banks.
+"""
+refs = ["CUTLASS: swizzled layouts", "CUDA best practices: bank conflicts"]
+level = 3
+
+[[entry]]
+code = "SMALL_PROBLEM"
+transform = "persistent_cta"
+effect = "eliminate tail and launch overhead"
+rationale = """
+The grid is smaller than the device, so wave quantization and launch ramp dominate. A
+persistent kernel with one CTA per SM removes both.
+"""
+refs = ["CUDA best practices: persistent kernels"]
+level = 3
+
+[[entry]]
+code = "SYNC_OVERHEAD"
+transform = "mbarrier_pipeline"
+effect = "split arrive and wait to overlap stages"
+rationale = """
+`__syncthreads()` waits at every stage boundary. `mbarrier.arrive`/`try_wait.parity`
+split the arrival from the wait so a thread can issue the next stage's work before the
+barrier retires.
+"""
+refs = ["PTX ISA: mbarrier", "Hopper tuning guide: pipeline"]
+level = 3

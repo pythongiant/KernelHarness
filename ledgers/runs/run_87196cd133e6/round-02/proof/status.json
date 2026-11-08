@@ -1,0 +1,23 @@
+{
+  "status": "VERIFIED",
+  "model": "paper-full",
+  "open_goals": [],
+  "axiom_audit": {
+    "ok": true,
+    "allowed": [
+      "propext",
+      "Classical.choice",
+      "Quot.sound"
+    ],
+    "checked": [
+      "correct",
+      "nonvacuous"
+    ],
+    "run": true
+  },
+  "modules": {
+    "Run87196cd133e6V0VectorizeX4R1StreamingStoresR2": "Harness/Generated/Run87196cd133e6V0VectorizeX4R1StreamingStoresR2.lean"
+  },
+  "instantiation": "elementwise N=8, a=10, b=3",
+  "numerical_scope": "exact real arithmetic; IEEE rounding not modeled"
+}

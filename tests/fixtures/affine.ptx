@@ -1,0 +1,22 @@
+.version 8.0
+.target sm_90a
+.address_size 64
+
+.visible .entry affine(
+    .param .u64 param_x,
+    .param .u64 param_out
+)
+{
+    .reg .u32 %r<8>;
+    .reg .u64 %rd<4>;
+
+    ld.param.u64 %rd1, [param_x];
+    ld.param.u64 %rd2, [param_out];
+    mov.u32 %r1, 10;
+    mov.u32 %r2, 3;
+    ld.global.u32 %r3, [%rd1];
+    mul.lo.u32 %r4, %r3, %r1;
+    add.u32 %r5, %r4, %r2;
+    st.global.u32 [%rd2], %r5;
+    ret;
+}

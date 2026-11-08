@@ -1,0 +1,1 @@
+- **MEM_BW_BOUND** (high): Roofline says memory-bound at `63.62%` of peak: `eff_bw_gbps = 2131.25` of `3350.00` GB/s, moving `33554432` bytes in `0.02 ms`.

@@ -1,0 +1,31 @@
+[
+  {
+    "source": "catalog",
+    "bottleneck_code": "MEM_BW_BOUND",
+    "transform_id": "vectorize_x4",
+    "title": "vectorize_x4 for MEM_BW_BOUND",
+    "rationale_md": "The kernel issues one 4-byte load and one 4-byte store per element, so the request\ncount (not the byte count) is the limit: 32-byte sectors are half-used. Loading and\nstoring `int4` lets one instruction move 16 bytes, cutting the number of memory\ninstructions and sectors by 4x. The measured SOL is below the roofline because the\nrequest rate, not the byte rate, is saturated.",
+    "refs": [
+      "NVIDIA CUDA C++ Programming Guide: vector types",
+      "Roofline: Williams, Waterman, Patterson (2008)"
+    ],
+    "expected_effect": "4x fewer memory requests, up to 4x effective bandwidth",
+    "severity": "high",
+    "level": 1,
+    "id": 17
+  },
+  {
+    "source": "catalog",
+    "bottleneck_code": "LOW_OCCUPANCY",
+    "transform_id": "launch_bound",
+    "title": "launch_bound for LOW_OCCUPANCY",
+    "rationale_md": "The compiler used more registers than the occupancy target allows, so fewer CTAs are\nresident per SM and there is not enough memory-level parallelism to saturate DRAM.\n`__launch_bounds__(256, 8)` forces the register budget down to 32/thread.",
+    "refs": [
+      "CUDA C++ Programming Guide: launch_bounds"
+    ],
+    "expected_effect": "cap registers, raise resident CTAs",
+    "severity": "high",
+    "level": 2,
+    "id": 18
+  }
+]

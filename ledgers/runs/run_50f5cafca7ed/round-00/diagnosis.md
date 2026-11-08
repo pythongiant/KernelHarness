@@ -1,0 +1,1 @@
+- baseline: no diagnosis before the first measurement
