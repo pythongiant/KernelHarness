@@ -58,7 +58,7 @@ def fill_buffers_s32(elems: list[int], seed: int = SEED) -> list[np.ndarray]:
     words = xorshift_words(total, seed)
     out, start = [], 0
     for e in elems:
-        out.append(_as_s32(words[start:start + int(e)]))
+        out.append(_as_s32(words[start : start + int(e)]))
         start += int(e)
     return out
 
@@ -68,7 +68,7 @@ def fill_buffers_f32(elems: list[int], seed: int = SEED) -> list[np.ndarray]:
     words = xorshift_words(total, seed)
     out, start = [], 0
     for e in elems:
-        out.append(_as_f32(words[start:start + int(e)]))
+        out.append(_as_f32(words[start : start + int(e)]))
         start += int(e)
     return out
 
@@ -101,7 +101,9 @@ def reference_matmul(kernel, env: dict[str, int] | None = None) -> np.ndarray:
     n = int(env.get("N_out", 8))
     if kernel.dtype in ("s32", "i32"):
         A, B = fill_buffers_s32([m * k, k * n])
-        return (A.reshape(m, k).astype(np.int32) @ B.reshape(k, n).astype(np.int32)).astype(np.int32)
+        return (A.reshape(m, k).astype(np.int32) @ B.reshape(k, n).astype(np.int32)).astype(
+            np.int32
+        )
     A, B = fill_buffers_f32([m * k, k * n])
     return (A.reshape(m, k) @ B.reshape(k, n)).astype(np.float32)
 

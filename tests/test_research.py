@@ -5,8 +5,15 @@ from harness.registry import get
 
 def _variant(level=0, params=None):
     k = get("elementwise_affine")
-    return Variant.build(variant_id="v", run_id="r", round_n=0, kernel=k, level=level,
-                         transform_id=None, params=params or {})
+    return Variant.build(
+        variant_id="v",
+        run_id="r",
+        round_n=0,
+        kernel=k,
+        level=level,
+        transform_id=None,
+        params=params or {},
+    )
 
 
 def test_catalog_picks_vectorize_for_memory_bound_elementwise():
@@ -19,27 +26,47 @@ def test_catalog_picks_vectorize_for_memory_bound_elementwise():
 
 def test_applied_transform_is_not_proposed_again():
     b = [{"code": "MEM_BW_BOUND", "severity": "high", "evidence_md": "x"}]
-    hyps = research.propose(b, {}, get("elementwise_affine"),
-                            _variant(level=1, params={"vector_width": 4}))
+    hyps = research.propose(
+        b, {}, get("elementwise_affine"), _variant(level=1, params={"vector_width": 4})
+    )
     assert all(h["transform_id"] != "vectorize_x4" for h in hyps)
 
 
 def test_llm_unknown_transform_is_rejected(monkeypatch):
     class Resp:
-        def raise_for_status(self): return None
+        def raise_for_status(self):
+            return None
+
         def json(self):
-            return {"choices": [{"message": {"content":
-                '{"hypotheses":[{"transform_id":"magic_wand","rationale_md":"no",'
-                '"refs":[],"expected_effect":"?"}]}'}}]}
+            return {
+                "choices": [
+                    {
+                        "message": {
+                            "content": '{"hypotheses":[{"transform_id":"magic_wand","rationale_md":"no",'
+                            '"refs":[],"expected_effect":"?"}]}'
+                        }
+                    }
+                ]
+            }
 
     class Client:
-        def __init__(self, *a, **k): pass
-        def __enter__(self): return self
-        def __exit__(self, *a): return False
-        def get(self, url): return Resp()
-        def post(self, url, json=None): return Resp()
+        def __init__(self, *a, **k):
+            pass
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return False
+
+        def get(self, url):
+            return Resp()
+
+        def post(self, url, json=None):
+            return Resp()
 
     import httpx
+
     monkeypatch.setattr(httpx, "Client", Client)
     monkeypatch.setenv("HARNESS_LLM_BASE_URL", "http://127.0.0.1:1/v1")
     b = [{"code": "MEM_BW_BOUND", "severity": "high", "evidence_md": "x"}]

@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import re
 
-
 _STRIDE_RE = re.compile(r"stride[=: ]\s*(\d+)")
 
 

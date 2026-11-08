@@ -41,8 +41,7 @@ def test_label_resolution_and_async_forms():
     assert branch["op"] == "Op.bra 1"
     assert branch["pred"] is not None
     ops = {i["op"].split(" ")[0] for i in r["program"]}
-    assert {"Op.barSync", "Op.cpAsyncCa", "Op.cpAsyncCommitGroup",
-            "Op.cpAsyncWaitGroup"} <= ops
+    assert {"Op.barSync", "Op.cpAsyncCa", "Op.cpAsyncCommitGroup", "Op.cpAsyncWaitGroup"} <= ops
 
 
 def test_unknown_opcode_is_rejected_with_name():

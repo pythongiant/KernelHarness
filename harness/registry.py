@@ -88,9 +88,26 @@ def load_kernel(path: Path | str) -> Kernel:
         baseline=data.get("baseline", "none"),
         level=int(data.get("level", 0)),
         path=p,
-        extra={k: v for k, v in data.items() if k not in {
-            "id", "family", "entry", "source", "shape", "dtype", "sol", "buffers",
-            "out_index", "tol", "spec_lean", "baseline", "level"}},
+        extra={
+            k: v
+            for k, v in data.items()
+            if k
+            not in {
+                "id",
+                "family",
+                "entry",
+                "source",
+                "shape",
+                "dtype",
+                "sol",
+                "buffers",
+                "out_index",
+                "tol",
+                "spec_lean",
+                "baseline",
+                "level",
+            }
+        },
     )
 
 
@@ -126,13 +143,17 @@ def geometry(k: Kernel) -> dict[str, int]:
         tm, tn = env.get("tile_m", 16), env.get("tile_n", 16)
         return {
             "block": env.get("block", 128),
-            "grid": evaluate("ceildiv(M, tile_m) * ceildiv(N_out, tile_n)",
-                             {**env, "M": m, "N_out": nn, "tile_m": tm, "tile_n": tn}),
+            "grid": evaluate(
+                "ceildiv(M, tile_m) * ceildiv(N_out, tile_n)",
+                {**env, "M": m, "N_out": nn, "tile_m": tm, "tile_n": tn},
+            ),
         }
     if k.family == "attention":
         row_tile = env.get("row_tile", 1)
-        return {"block": env.get("block", 64),
-                "grid": evaluate("ceildiv(N_rows, row_tile)", {**env, "row_tile": row_tile})}
+        return {
+            "block": env.get("block", 64),
+            "grid": evaluate("ceildiv(N_rows, row_tile)", {**env, "row_tile": row_tile}),
+        }
     return {"block": env.get("block", 128), "grid": evaluate("ceildiv(N, 128)", env)}
 
 

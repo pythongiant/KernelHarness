@@ -29,14 +29,33 @@ class Variant:
         return geometry(self.kernel)
 
     @classmethod
-    def build(cls, *, variant_id: str, run_id: str, round_n: int, kernel: Kernel,
-              level: int, transform_id: str | None, params: dict,
-              parent_id: str | None = None) -> "Variant":
+    def build(
+        cls,
+        *,
+        variant_id: str,
+        run_id: str,
+        round_n: int,
+        kernel: Kernel,
+        level: int,
+        transform_id: str | None,
+        params: dict,
+        parent_id: str | None = None,
+    ) -> Variant:
         source = render_source(kernel, level, params)
         sha = hashlib.sha256(source.encode()).hexdigest()
-        return cls(id=variant_id, run_id=run_id, round_n=round_n, family=kernel.family,
-                   level=level, transform_id=transform_id, params=params, kernel=kernel,
-                   source=source, sha256=sha, parent_id=parent_id)
+        return cls(
+            id=variant_id,
+            run_id=run_id,
+            round_n=round_n,
+            family=kernel.family,
+            level=level,
+            transform_id=transform_id,
+            params=params,
+            kernel=kernel,
+            source=source,
+            sha256=sha,
+            parent_id=parent_id,
+        )
 
 
 def digest(source: str) -> str:

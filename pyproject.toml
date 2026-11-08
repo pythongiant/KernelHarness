@@ -29,7 +29,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = ["pytest>=8.0", "pytest-asyncio>=0.23"]
+dev = ["pytest>=8.0", "pytest-asyncio>=0.23", "ruff>=0.8"]
 
 [project.scripts]
 harness = "harness.cli:main"
@@ -54,3 +54,21 @@ asyncio_default_fixture_loop_scope = "function"
 
 [tool.uv]
 package = true
+
+[tool.ruff]
+line-length = 100
+target-version = "py313"
+extend-exclude = ["lean", "web"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "SIM"]
+ignore = [
+    "E501",    # long lines are left to the formatter; SQL/CUDA strings stay unwrapped
+    "E731",    # small lambdas in the remote GPU baseline code read better inline
+    "E741",    # `l` is the conventional name for a Lean `Launch` in the translator
+    "SIM102",
+    "SIM105",
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["harness"]

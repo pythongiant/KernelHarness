@@ -41,10 +41,15 @@ def apply_transform(variant: Variant, hypothesis: dict, round_n: int | None = No
     if levels:
         level = min(level, max(levels))
     new_params = {**copy.deepcopy(variant.params), **params}
-    if level >= 2 and variant.kernel.family == "gemm" and variant.kernel.dtype not in ("f16", "bf16"):
+    if (
+        level >= 2
+        and variant.kernel.family == "gemm"
+        and variant.kernel.dtype not in ("f16", "bf16")
+    ):
         raise NoOpVariant(
             f"level {level} for `{variant.kernel.id}` needs half-precision operands for the "
-            f"tensor-core/cp.async staging; kernel dtype is `{variant.kernel.dtype}`")
+            f"tensor-core/cp.async staging; kernel dtype is `{variant.kernel.dtype}`"
+        )
     child = Variant.build(
         variant_id=f"{variant.id}-{tid}-r{round_n if round_n is not None else variant.round_n}",
         run_id=variant.run_id,
@@ -57,6 +62,7 @@ def apply_transform(variant: Variant, hypothesis: dict, round_n: int | None = No
     )
     if child.sha256 == variant.sha256:
         raise NoOpVariant(
-            f"transform {tid} produced an identical source (level {level}, params {new_params})")
+            f"transform {tid} produced an identical source (level {level}, params {new_params})"
+        )
     child.meta["hypothesis"] = hypothesis
     return child

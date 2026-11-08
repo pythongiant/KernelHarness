@@ -33,35 +33,66 @@ SCOPES = {"cta", "cluster", "gpu", "sys"}
 SEMS = {"relaxed", "acquire", "release", "acqrel", "sc"}
 CACHES = {"ca", "cg", "cs", "lu", "cv"}
 VECS = {"v1", "v2", "v4"}
-TYS = {"u8", "u16", "u32", "u64", "s8", "s16", "s32", "s64",
-       "f16", "bf16", "f32", "f64", "pred"}
-ATOMOPS = {"add": "add_", "and": "and_", "or": "or_", "xor": "xor_",
-           "cas": "cas", "exch": "exch"}
+TYS = {"u8", "u16", "u32", "u64", "s8", "s16", "s32", "s64", "f16", "bf16", "f32", "f64", "pred"}
+ATOMOPS = {"add": "add_", "and": "and_", "or": "or_", "xor": "xor_", "cas": "cas", "exch": "exch"}
 CMPS = {"eq", "ne", "lt", "le", "gt", "ge", "ltu", "leu", "gtu", "geu"}
 
 #: Number of destination operand *groups* per form (0 for pure stores/control).
 DST_GROUPS = {
-    "st": 0, "red": 0, "ret": 0, "exit": 0, "bra": 0, "bra.uni": 0,
-    "bar.sync": 0, "bar.arrive": 0, "bar.warp.sync": 0, "cluster.sync": 0,
-    "barrier.cluster.arrive": 0, "barrier.cluster.wait": 0,
-    "fence.sc": 0, "fence.proxy.async": 0, "fence.proxy.tensormap": 0,
-    "fence.proxy.async.shared::cta": 0, "membar": 0, "membar.gl": 0, "membar.cta": 0,
-    "cp.async.commit_group": 0, "cp.async.wait_group": 0, "cp.async.wait_all": 0,
-    "cp.async.bulk.commit_group": 0, "cp.async.bulk.wait_group": 0,
-    "wgmma.fence": 0, "wgmma.commit_group": 0, "wgmma.wait_group": 0,
-    "tcgen05.commit": 0, "tcgen05.wait": 0, "tcgen05.fence": 0,
-    "mbarrier.init": 1, "mbarrier.arrive": 1, "mbarrier.arrive.expect_tx": 1,
-    "mbarrier.try_wait.parity": 1, "mbarrier.wait.parity": 1,
+    "st": 0,
+    "red": 0,
+    "ret": 0,
+    "exit": 0,
+    "bra": 0,
+    "bra.uni": 0,
+    "bar.sync": 0,
+    "bar.arrive": 0,
+    "bar.warp.sync": 0,
+    "cluster.sync": 0,
+    "barrier.cluster.arrive": 0,
+    "barrier.cluster.wait": 0,
+    "fence.sc": 0,
+    "fence.proxy.async": 0,
+    "fence.proxy.tensormap": 0,
+    "fence.proxy.async.shared::cta": 0,
+    "membar": 0,
+    "membar.gl": 0,
+    "membar.cta": 0,
+    "cp.async.commit_group": 0,
+    "cp.async.wait_group": 0,
+    "cp.async.wait_all": 0,
+    "cp.async.bulk.commit_group": 0,
+    "cp.async.bulk.wait_group": 0,
+    "wgmma.fence": 0,
+    "wgmma.commit_group": 0,
+    "wgmma.wait_group": 0,
+    "tcgen05.commit": 0,
+    "tcgen05.wait": 0,
+    "tcgen05.fence": 0,
+    "mbarrier.init": 1,
+    "mbarrier.arrive": 1,
+    "mbarrier.arrive.expect_tx": 1,
+    "mbarrier.try_wait.parity": 1,
+    "mbarrier.wait.parity": 1,
     "mma.sync.aligned.m16n8k16.row.col.f32.f16.f16.f32": 2,
     "wgmma.mma_async.sync.aligned.m64n8k16.f32.f16.f16": 2,
-    "tcgen05.mma": 1, "tcgen05.ld": 1, "tcgen05.st": 0, "tcgen05.alloc": 1,
-    "tcgen05.cp": 1, "ldmatrix.sync.aligned.m8n8.x4.shared.b16": 1,
+    "tcgen05.mma": 1,
+    "tcgen05.ld": 1,
+    "tcgen05.st": 0,
+    "tcgen05.alloc": 1,
+    "tcgen05.cp": 1,
+    "ldmatrix.sync.aligned.m8n8.x4.shared.b16": 1,
     "ldmatrix.sync.aligned.m8n8.x2.shared.b16": 1,
     "ldmatrix.sync.aligned.m8n8.x1.shared.b16": 1,
-    "cp.async.ca.shared.global": 1, "cp.async.cg.shared.global": 1,
+    "cp.async.ca.shared.global": 1,
+    "cp.async.cg.shared.global": 1,
     "cp.async.bulk.tensor.2d.shared::cluster.global.tile": 1,
-    "elect.sync": 1, "mapa": 1, "clusterlaunchcontrol.try_cancel": 1,
-    "st.param": 0, "st.global.cs": 0, "st.global": 0,
+    "elect.sync": 1,
+    "mapa": 1,
+    "clusterlaunchcontrol.try_cancel": 1,
+    "st.param": 0,
+    "st.global.cs": 0,
+    "st.global": 0,
 }
 
 
@@ -76,8 +107,10 @@ class Form:
 
 def load_forms(path: Path | None = None) -> dict[str, Form]:
     data = tomllib.loads((path or FORMS_PATH).read_text())
-    return {f["op"]: Form(f["op"], f["quals"], f["operands"], f["semantics"], f["lean_ctor"])
-            for f in data["form"]}
+    return {
+        f["op"]: Form(f["op"], f["quals"], f["operands"], f["semantics"], f["lean_ctor"])
+        for f in data["form"]
+    }
 
 
 FORMS = load_forms()
@@ -131,9 +164,28 @@ def op_term(opcode: str) -> str:
         return f"{ctor} {next((q for q in quals if q.isdigit()), '0')}"
     if form in ("bar.sync", "bar.arrive"):
         return f"{ctor} {next((q for q in quals if q.isdigit()), '0')}"
-    if form in ("mov", "add", "sub", "mul", "mad", "div", "rem", "selp", "shl", "shr",
-                "and", "or", "xor", "not", "neg", "abs", "min", "max",
-                "ld.param", "st.param"):
+    if form in (
+        "mov",
+        "add",
+        "sub",
+        "mul",
+        "mad",
+        "div",
+        "rem",
+        "selp",
+        "shl",
+        "shr",
+        "and",
+        "or",
+        "xor",
+        "not",
+        "neg",
+        "abs",
+        "min",
+        "max",
+        "ld.param",
+        "st.param",
+    ):
         return f"{ctor} .{next((q for q in quals if q in TYS), 'u32')}"
     return ctor
 
@@ -159,16 +211,33 @@ def _mem_space(opcode: str) -> str:
 def _parse_addr(expr: str, opcode: str) -> dict:
     """Parse `[base]`, `[base+off]`, `[base+tid*stride]` into a symbolic operand."""
     e = expr.strip()
-    m = re.match(r"^(?P<base>[A-Za-z0-9_%]+)\s*\+\s*[A-Za-z0-9_%]*tid[A-Za-z0-9_.]*\s*\*\s*(?P<stride>\d+)\s*(?:\+\s*(?P<off>\d+))?$", e)
+    m = re.match(
+        r"^(?P<base>[A-Za-z0-9_%]+)\s*\+\s*[A-Za-z0-9_%]*tid[A-Za-z0-9_.]*\s*\*\s*(?P<stride>\d+)\s*(?:\+\s*(?P<off>\d+))?$",
+        e,
+    )
     if m:
-        return {"kind": "mem", "space": _mem_space(opcode), "base": 0,
-                "off": int(m.group("off") or 0), "stride": int(m.group("stride")),
-                "rowSize": 0, "rowStride": 0, "colStride": 0}
+        return {
+            "kind": "mem",
+            "space": _mem_space(opcode),
+            "base": 0,
+            "off": int(m.group("off") or 0),
+            "stride": int(m.group("stride")),
+            "rowSize": 0,
+            "rowStride": 0,
+            "colStride": 0,
+        }
     m = re.match(r"^(?P<base>[A-Za-z0-9_%]+)\s*\*\s*(?P<stride>\d+)\s*(?:\+\s*(?P<off>\d+))?$", e)
     if m:
-        return {"kind": "mem", "space": _mem_space(opcode), "base": 0,
-                "off": int(m.group("off") or 0), "stride": int(m.group("stride")),
-                "rowSize": 0, "rowStride": 0, "colStride": 0}
+        return {
+            "kind": "mem",
+            "space": _mem_space(opcode),
+            "base": 0,
+            "off": int(m.group("off") or 0),
+            "stride": int(m.group("stride")),
+            "rowSize": 0,
+            "rowStride": 0,
+            "colStride": 0,
+        }
     m = _ADDR_OFF_RE.match(e)
     if m:
         base = m.group("base")
@@ -176,9 +245,16 @@ def _parse_addr(expr: str, opcode: str) -> dict:
         b = 0
         if re.fullmatch(r"(0x[0-9a-fA-F]+|\d+)", base):
             b = int(base, 0)
-        return {"kind": "mem", "space": _mem_space(opcode), "base": b,
-                "off": int(off, 0) if off else 0, "stride": 0, "rowSize": 0,
-                "rowStride": 0, "colStride": 0}
+        return {
+            "kind": "mem",
+            "space": _mem_space(opcode),
+            "base": b,
+            "off": int(off, 0) if off else 0,
+            "stride": 0,
+            "rowSize": 0,
+            "rowStride": 0,
+            "colStride": 0,
+        }
     raise ParseError(f"cannot parse address expression: {expr!r}")
 
 
@@ -215,7 +291,7 @@ def _split_groups(operand_text: str) -> list[str]:
 def _operand(tok: str, decls: _Decls, opcode: str) -> dict:
     t = tok.strip()
     if t.startswith("["):
-        return _parse_addr(t[1:t.rindex("]")], opcode)
+        return _parse_addr(t[1 : t.rindex("]")], opcode)
     if t.startswith("%"):
         return {"kind": "reg", "n": decls.index(t)}
     if re.fullmatch(r"-?(?:0x[0-9a-fA-F]+|\d+)", t):
@@ -247,9 +323,14 @@ def parse_ptx(text: str) -> dict:
             if s.rstrip().endswith(")"):
                 in_signature = False
             continue
-        if s in ("{", "}", "};") or s.startswith(".version") or s.startswith(".target") \
-                or s.startswith(".address_size") or s.startswith(".param") \
-                or s.startswith(".shared"):
+        if (
+            s in ("{", "}", "};")
+            or s.startswith(".version")
+            or s.startswith(".target")
+            or s.startswith(".address_size")
+            or s.startswith(".param")
+            or s.startswith(".shared")
+        ):
             continue
         if s.startswith(".reg"):
             for part in s.split()[1:]:
@@ -293,8 +374,9 @@ def parse_ptx(text: str) -> dict:
         if opcode in ("bra", "bra.uni") and src and src[0].get("kind") == "sym":
             branch_target = src[0]["name"]
             op = f"{op} {labels.get(branch_target, 0)}"
-        program.append({"op": op, "dst": dst, "src": src, "pred": pred, "line": line_no,
-                        "opcode": opcode})
+        program.append(
+            {"op": op, "dst": dst, "src": src, "pred": pred, "line": line_no, "opcode": opcode}
+        )
     # second pass: resolve branch labels known only after the full scan
     for instr in program:
         if instr.get("opcode") in ("bra", "bra.uni"):

@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 import sqlite3
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 from .config import STATE_DIR, RunConfig, ensure_dirs
@@ -37,7 +37,7 @@ def db_path() -> Path:
 
 
 def now() -> str:
-    return datetime.now(timezone.utc).isoformat(timespec="seconds")
+    return datetime.now(UTC).isoformat(timespec="seconds")
 
 
 def connect(path: Path | None = None) -> sqlite3.Connection:
@@ -266,14 +266,19 @@ def run_snapshot(conn: sqlite3.Connection, run_id: str) -> dict | None:
     for e in out["events"]:
         e["payload"] = json.loads(e.pop("payload_json") or "null")
     vids = [
-        r["id"] for r in conn.execute("SELECT id FROM variants WHERE run_id=?", (run_id,)).fetchall()
+        r["id"]
+        for r in conn.execute("SELECT id FROM variants WHERE run_id=?", (run_id,)).fetchall()
     ]
-    out["variants"] = _rows(conn, "SELECT * FROM variants WHERE run_id=? ORDER BY round_n", (run_id,))
+    out["variants"] = _rows(
+        conn, "SELECT * FROM variants WHERE run_id=? ORDER BY round_n", (run_id,)
+    )
     profiles: list[dict] = []
     bottlenecks: list[dict] = []
     proofs: list[dict] = []
     for vid in vids:
-        profiles.extend(_rows(conn, "SELECT * FROM profiles WHERE variant_id=? ORDER BY id", (vid,)))
+        profiles.extend(
+            _rows(conn, "SELECT * FROM profiles WHERE variant_id=? ORDER BY id", (vid,))
+        )
         bottlenecks.extend(
             _rows(conn, "SELECT * FROM bottlenecks WHERE variant_id=? ORDER BY id", (vid,))
         )
@@ -286,7 +291,9 @@ def run_snapshot(conn: sqlite3.Connection, run_id: str) -> dict | None:
     out["profiles"] = profiles
     out["bottlenecks"] = bottlenecks
     out["proofs"] = proofs
-    out["hypotheses"] = _rows(conn, "SELECT * FROM hypotheses WHERE run_id=? ORDER BY id", (run_id,))
+    out["hypotheses"] = _rows(
+        conn, "SELECT * FROM hypotheses WHERE run_id=? ORDER BY id", (run_id,)
+    )
     for h in out["hypotheses"]:
         h["refs"] = json.loads(h.pop("refs_json") or "[]")
     out["commits"] = _rows(conn, "SELECT * FROM commits WHERE run_id=? ORDER BY id", (run_id,))

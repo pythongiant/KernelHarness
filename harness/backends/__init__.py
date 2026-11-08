@@ -12,6 +12,7 @@ def make_backend(name: str, gpu: str):
         return SimBackend(gpu)
     if name == "modal":
         from .modal_gpu import ModalBackend
+
         return ModalBackend(gpu)
     raise ValueError(f"unknown backend: {name}")
 

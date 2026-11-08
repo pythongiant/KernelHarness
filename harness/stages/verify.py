@@ -42,8 +42,11 @@ def build_instance(variant: Variant) -> dict:
     if family == "elementwise":
         n = LEAN_N
         program, geom = lower.lower_elementwise(
-            {**variant.params, "lean_n": n}, lean_n=n,
-            a=int(kernel.shape_env().get("a", 10)), b=int(kernel.shape_env().get("b", 3)))
+            {**variant.params, "lean_n": n},
+            lean_n=n,
+            a=int(kernel.shape_env().get("a", 10)),
+            b=int(kernel.shape_env().get("b", 3)),
+        )
         a = int(kernel.shape_env().get("a", 10))
         b = int(kernel.shape_env().get("b", 3))
         x = reference.fill_s32(n)
@@ -51,8 +54,11 @@ def build_instance(variant: Variant) -> dict:
         init = {lower.IN_BASE + i: raw[i] for i in range(len(raw))}
         out = (np.int32(a) * x + np.int32(b)).astype(np.int32)
         return {
-            "program": program, "geom": geom, "init": init,
-            "out_base": lower.OUT_BASE, "out_bytes": list(_s32_bytes(out)),
+            "program": program,
+            "geom": geom,
+            "init": init,
+            "out_base": lower.OUT_BASE,
+            "out_bytes": list(_s32_bytes(out)),
             "instance": f"elementwise N={n}, a={a}, b={b}",
         }
     if family == "gemm":
@@ -65,8 +71,11 @@ def build_instance(variant: Variant) -> dict:
         init.update({lower.B_BASE + i: rawB[i] for i in range(len(rawB))})
         C = (A @ B).astype(np.int32)
         return {
-            "program": program, "geom": geom, "init": init,
-            "out_base": lower.C_BASE, "out_bytes": list(_s32_bytes(C)),
+            "program": program,
+            "geom": geom,
+            "init": init,
+            "out_base": lower.C_BASE,
+            "out_bytes": list(_s32_bytes(C)),
             "instance": f"gemm M=K=N={m}",
         }
     raise NotImplementedError(f"no verification instance for family {family}")
@@ -76,30 +85,41 @@ def verify(variant: Variant, *, log_dir: Path | None = None) -> emit.ProofResult
     """Verify a variant against the Lean model."""
     if variant.kernel.dtype not in ("s32", "i32"):
         return emit.ProofResult(
-            status="UNSUPPORTED", model="paper-full",
+            status="UNSUPPORTED",
+            model="paper-full",
             open_goals=[
                 "UNSUPPORTED: the model reasons about bit patterns and exact integer "
                 f"arithmetic; dtype `{variant.kernel.dtype}` needs IEEE rounding, which is "
-                "outside its numerical scope (see numerical_scope)."],
-            axiom_audit={"ok": False, "run": False}, modules={}, instantiation="none")
+                "outside its numerical scope (see numerical_scope)."
+            ],
+            axiom_audit={"ok": False, "run": False},
+            modules={},
+            instantiation="none",
+        )
     if variant.family in ("attention",):
         prelude = (
             "softmax uses expf, which the model does not provide: the PTX semantics "
             "covers bit patterns and exact integer arithmetic, not transcendentals"
         )
         return emit.ProofResult(
-            status="UNSUPPORTED", model="paper-full",
+            status="UNSUPPORTED",
+            model="paper-full",
             open_goals=[f"UNSUPPORTED: {prelude}"],
             axiom_audit={"ok": False, "run": False},
-            modules={}, instantiation="none",
+            modules={},
+            instantiation="none",
         )
     try:
         inst = build_instance(variant)
     except NotImplementedError as exc:
         return emit.ProofResult(
-            status="UNSUPPORTED", model="paper-full",
+            status="UNSUPPORTED",
+            model="paper-full",
             open_goals=[f"UNSUPPORTED: {exc}"],
-            axiom_audit={"ok": False, "run": False}, modules={}, instantiation="none")
+            axiom_audit={"ok": False, "run": False},
+            modules={},
+            instantiation="none",
+        )
 
     name, source = emit.emit_lean(
         variant_id=variant.id,
