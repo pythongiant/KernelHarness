@@ -161,3 +161,48 @@ def harness_header(kernel, env: dict[str, int], buffers: list[str]) -> str:
 
 def bench_driver(source: str, variant_id: str) -> str:
     return BENCH.replace("@@SOURCE@@", source).replace("@@VARIANT@@", variant_id)
+
+
+def build_profile_job(variant, gpu: str, *, reps: int, warmup: int):
+    """Build the `ProfileJob` a backend needs to compile, time and check `variant`."""
+    from ..backends.base import ProfileJob
+    from ..registry import geometry
+
+    kernel = variant.kernel
+    env = kernel.shape_env()
+    geom = geometry(kernel)
+    bytes_moved, flops = kernel.sol_numbers(env)
+    return ProfileJob(
+        variant_id=variant.id,
+        gpu=gpu,
+        source=variant.source,
+        harness_header=harness_header(kernel, env, kernel.buffers),
+        shape={
+            "N": env.get("N", 0),
+            "M": env.get("M", 0),
+            "K": env.get("K", 0),
+            "N_out": env.get("N_out", env.get("K", 0)),
+            "N_rows": env.get("N_rows", 0),
+            "T": env.get("T", 0),
+            "D": env.get("D", 0),
+        },
+        tol=kernel.tol,
+        reps=reps,
+        warmup=warmup,
+        baseline=kernel.baseline,
+        bytes_moved=bytes_moved,
+        flops=flops,
+        sol_kind=kernel.sol.kind,
+        out_index=kernel.out_index,
+        buffers=kernel.buffers,
+        dtype=kernel.dtype,
+        family=kernel.family,
+        grid=geom["grid"],
+        block=geom["block"],
+        extra={
+            "level": variant.level,
+            "family": variant.family,
+            "transforms": list(variant.params.keys()),
+            "reference": kernel.extra.get("reference"),
+        },
+    )

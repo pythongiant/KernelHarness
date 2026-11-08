@@ -25,6 +25,15 @@ RUN_STATUS = ("running", "sla_met", "max_rounds", "stalled", "blocked", "stopped
 
 STOP_REASONS = ("SLA_MET", "MAX_ROUNDS", "STALLED", "BLOCKED", "STOPPED_BY_USER")
 
+#: The run status recorded for each stop reason.
+STATUS_FOR_STOP = {
+    "SLA_MET": "sla_met",
+    "MAX_ROUNDS": "max_rounds",
+    "STALLED": "stalled",
+    "BLOCKED": "blocked",
+    "STOPPED_BY_USER": "stopped",
+}
+
 PROOF_STATUS = ("VERIFIED", "PARTIAL", "FAILED", "UNSUPPORTED")
 
 EVENT_KINDS = (

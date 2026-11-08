@@ -4,17 +4,14 @@ from __future__ import annotations
 
 import asyncio
 import json
-import os
-from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
-from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse, StreamingResponse
+from fastapi.responses import PlainTextResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from .config import WEB_DIR, RunConfig, Sla
-from .db import (connect, create_run, init_db, latest_profile, latest_proof, list_runs,
-                 run_snapshot)
+from .config import LEAN_DIR, NUMERICAL_SCOPE, WEB_DIR, RunConfig, Sla
+from .db import connect, create_run, init_db, latest_proof, list_runs, run_snapshot
 from .orchestrator import run_loop
 from .registry import geometry, registry
 from .stages import ledger as ledger_stage
@@ -45,22 +42,38 @@ def api_registry():
     out = []
     for k in registry():
         env = k.shape_env()
-        out.append({
-            "id": k.id, "family": k.family, "dtype": k.dtype, "level": k.level,
-            "levels": k.levels(), "shape": k.shape, "shape_resolved": env,
-            "sol": {"kind": k.sol.kind, "bytes": k.sol.bytes, "flops": k.sol.flops,
+        out.append(
+            {
+                "id": k.id,
+                "family": k.family,
+                "dtype": k.dtype,
+                "level": k.level,
+                "levels": k.levels(),
+                "shape": k.shape,
+                "shape_resolved": env,
+                "sol": {
+                    "kind": k.sol.kind,
+                    "bytes": k.sol.bytes,
+                    "flops": k.sol.flops,
                     "bytes_resolved": k.sol_numbers(env)[0],
-                    "flops_resolved": k.sol_numbers(env)[1]},
-            "geometry": geometry(k), "baseline": k.baseline, "spec_lean": k.spec_lean,
-            "tol": k.tol, "buffers": k.buffers, "out_index": k.out_index,
-        })
+                    "flops_resolved": k.sol_numbers(env)[1],
+                },
+                "geometry": geometry(k),
+                "baseline": k.baseline,
+                "spec_lean": k.spec_lean,
+                "tol": k.tol,
+                "buffers": k.buffers,
+                "out_index": k.out_index,
+            }
+        )
     return {"kernels": out}
 
 
 @app.post("/api/runs")
 async def api_start(req: RunRequest):
-    cfg = RunConfig(kernel_id=req.kernel_id, gpu=req.gpu, backend=req.backend,
-                    sla=Sla(**(req.sla or {})))
+    cfg = RunConfig(
+        kernel_id=req.kernel_id, gpu=req.gpu, backend=req.backend, sla=Sla(**(req.sla or {}))
+    )
     c = conn()
     run_id = create_run(c, cfg)
     cancel = asyncio.Event()
@@ -69,8 +82,15 @@ async def api_start(req: RunRequest):
 
     async def emit(stage, kind, title, body_md, payload):
         for q in list(_subscribers.get(run_id, [])):
-            await q.put({"stage": stage, "kind": kind, "title": title,
-                         "body_md": body_md, "payload": payload})
+            await q.put(
+                {
+                    "stage": stage,
+                    "kind": kind,
+                    "title": title,
+                    "body_md": body_md,
+                    "payload": payload,
+                }
+            )
 
     async def runner():
         try:
@@ -108,9 +128,14 @@ def api_stop(run_id: str):
 def _sse_name(kind: str) -> str:
     """Map an event kind to the SSE frame name the UI subscribes to."""
     return {
-        "stage_start": "stage", "stage_end": "stage",
-        "measurement": "round", "error": "error",
-        "reasoning": "log", "decision": "log", "artifact": "log", "log": "log",
+        "stage_start": "stage",
+        "stage_end": "stage",
+        "measurement": "round",
+        "error": "error",
+        "reasoning": "log",
+        "decision": "log",
+        "artifact": "log",
+        "log": "log",
     }.get(kind, "log")
 
 
@@ -122,8 +147,14 @@ async def api_stream(run_id: str):
     q: asyncio.Queue = asyncio.Queue()
     _subscribers.setdefault(run_id, []).append(q)
     backlog = [
-        {"stage": e["stage"], "kind": e["kind"], "title": e["title"],
-         "body_md": e["body_md"], "payload": e["payload"], "replay": True}
+        {
+            "stage": e["stage"],
+            "kind": e["kind"],
+            "title": e["title"],
+            "body_md": e["body_md"],
+            "payload": e["payload"],
+            "replay": True,
+        }
         for e in snap["events"]
     ]
 
@@ -133,15 +164,14 @@ async def api_stream(run_id: str):
         try:
             yield "event: sync\ndata: " + json.dumps({"events": backlog}) + "\n\n"
             for item in backlog:
-                yield (f"event: {_sse_name(item['kind'])}\n"
-                       f"data: {json.dumps(item)}\n\n")
+                yield (f"event: {_sse_name(item['kind'])}\ndata: {json.dumps(item)}\n\n")
             if terminal:
                 yield "event: done\ndata: {}\n\n"
                 return
             while True:
                 try:
                     item = await asyncio.wait_for(q.get(), timeout=15.0)
-                except asyncio.TimeoutError:
+                except TimeoutError:
                     yield "event: heartbeat\ndata: {}\n\n"
                     continue
                 if item is None:
@@ -176,9 +206,14 @@ def api_ptx(variant_id: str):
 def api_diff(variant_id: str, base: str | None = None):
     row = _variant_row(variant_id)
     if base is None:
-        parent = conn().execute(
-            "SELECT * FROM variants WHERE run_id=? AND round_n<? ORDER BY round_n DESC LIMIT 1",
-            (row["run_id"], row["round_n"])).fetchone()
+        parent = (
+            conn()
+            .execute(
+                "SELECT * FROM variants WHERE run_id=? AND round_n<? ORDER BY round_n DESC LIMIT 1",
+                (row["run_id"], row["round_n"]),
+            )
+            .fetchone()
+        )
         base_src = parent["kernel_cu"] if parent else ""
     else:
         base_src = _variant_row(base)["kernel_cu"]
@@ -192,10 +227,9 @@ def api_proof(variant_id: str):
         raise HTTPException(404, "no proof for variant")
     modules = {}
     for name, path in (row.get("modules") or {}).items():
-        p = Path(__file__).resolve().parent.parent / "lean" / path
+        p = LEAN_DIR / path
         modules[name] = p.read_text() if p.exists() else ""
-    return {**row, "sources": modules,
-            "numerical_scope": "exact real arithmetic; IEEE rounding not modeled"}
+    return {**row, "sources": modules, "numerical_scope": NUMERICAL_SCOPE}
 
 
 @app.get("/api/runs/{run_id}/report")
@@ -203,10 +237,14 @@ def api_report(run_id: str):
     snap = run_snapshot(conn(), run_id)
     if snap is None:
         raise HTTPException(404, "unknown run")
-    lines = [f"# Run {run_id} — {snap['kernel_id']} on {snap['config']['gpu']}", "",
-             f"Status: **{snap['status']}** ({snap['stop_reason']}).", "",
-             "| round | variant | transform | sol % | p50 ms | proof | commit |",
-             "|---|---|---|---|---|---|---|"]
+    lines = [
+        f"# Run {run_id} — {snap['kernel_id']} on {snap['config']['gpu']}",
+        "",
+        f"Status: **{snap['status']}** ({snap['stop_reason']}).",
+        "",
+        "| round | variant | transform | sol % | p50 ms | proof | commit |",
+        "|---|---|---|---|---|---|---|",
+    ]
     by_variant = {p["variant_id"]: p["profile"] for p in snap["profiles"]}
     proofs = {p["variant_id"]: p["status"] for p in snap["proofs"]}
     commits = {c["round_n"]: c["sha"] for c in snap["commits"]}
@@ -215,8 +253,9 @@ def api_report(run_id: str):
         lines.append(
             f"| {v['round_n']} | `{v['id']}` | `{v['transform_id'] or 'baseline'}` | "
             f"{prof.get('sol_pct', 0):.1f} | {prof.get('p50_ms', 0):.3f} | "
-            f"{proofs.get(v['id'], 'n/a')} | `{(commits.get(v['round_n']) or '')[:12]}` |")
-    lines += ["", f"numerical_scope: \"exact real arithmetic; IEEE rounding not modeled\"", ""]
+            f"{proofs.get(v['id'], 'n/a')} | `{(commits.get(v['round_n']) or '')[:12]}` |"
+        )
+    lines += ["", f'numerical_scope: "{NUMERICAL_SCOPE}"', ""]
     return PlainTextResponse("\n".join(lines))
 
 

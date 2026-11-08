@@ -14,7 +14,6 @@ from __future__ import annotations
 import re
 import shutil
 import subprocess
-import tempfile
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -38,9 +37,11 @@ def _operand(o: dict) -> str:
     if k == "imm":
         return f"Operand.imm {o['v']}"
     if k == "mem":
-        return (f"Operand.mem .{o.get('space', 'global')} {o.get('base', 0)} {o.get('off', 0)} "
-                f"{o.get('stride', 0)} {o.get('rowSize', 0)} {o.get('rowStride', 0)} "
-                f"{o.get('colStride', 0)}")
+        return (
+            f"Operand.mem .{o.get('space', 'global')} {o.get('base', 0)} {o.get('off', 0)} "
+            f"{o.get('stride', 0)} {o.get('rowSize', 0)} {o.get('rowStride', 0)} "
+            f"{o.get('colStride', 0)}"
+        )
     raise ValueError(f"cannot emit operand {o!r}")
 
 
@@ -75,7 +76,7 @@ def emit_lean(
     block = int(geom.get("block", threads))
     grid = int(geom.get("grid", 1))
     refs = ", ".join(str(b) for b in out_bytes)
-    src = f'''import Harness.PTX.Observer
+    src = f"""import Harness.PTX.Observer
 import Harness.Lib.Core
 import Harness.Audit
 
@@ -134,7 +135,7 @@ run_cmd Harness.Audit.audit #[``correct, ``nonvacuous]
 #eval "AUDIT_OK"
 
 end Harness.Generated.{name}
-'''
+"""
     return name, src
 
 
@@ -170,12 +171,33 @@ class ProofResult:
             "log_path": self.log_path,
         }
 
+    def summary(self) -> dict:
+        """The proof record written to the ledger (`proof/status.json`)."""
+        return {
+            "status": self.status,
+            "model": self.model,
+            "open_goals": self.open_goals,
+            "axiom_audit": self.axiom_audit,
+            "modules": self.modules,
+            "instantiation": self.instantiation,
+            "numerical_scope": NUMERICAL_SCOPE,
+        }
+
+    def module_sources(self) -> dict[str, str]:
+        """Generated Lean sources keyed by module name (empty string if missing)."""
+        out = {}
+        for rel in (self.modules or {}).values():
+            path = LEAN_DIR / rel
+            out[Path(rel).stem] = path.read_text() if path.exists() else ""
+        return out
+
 
 _ERROR_RE = re.compile(r"^.*?:\d+:\d+: error(?:\(([a-z_.]+)\))?: (.*)$")
 
 
-def check(module_name: str, source: str, *, log_dir: Path | None = None,
-          timeout: int = 900) -> ProofResult:
+def check(
+    module_name: str, source: str, *, log_dir: Path | None = None, timeout: int = 900
+) -> ProofResult:
     """Write the module, run Lean, and classify the result."""
     GENERATED_DIR.mkdir(parents=True, exist_ok=True)
     path = GENERATED_DIR / f"{module_name}.lean"
@@ -186,18 +208,26 @@ def check(module_name: str, source: str, *, log_dir: Path | None = None,
 
     lake = lean_binary()
     if lake is None:
-        result = ProofResult(status="UNSUPPORTED", model="none",
-                             open_goals=["Lean toolchain not found on PATH"],
-                             instantiation="none")
+        result = ProofResult(
+            status="UNSUPPORTED",
+            model="none",
+            open_goals=["Lean toolchain not found on PATH"],
+            instantiation="none",
+        )
         log_path.write_text(result.open_goals[0])
         result.log_path = str(log_path)
         return result
 
     env_path = str(Path(lake).parent)
     cmd = [lake, "env", "lean", str(path.relative_to(LEAN_DIR))]
-    proc = subprocess.run(cmd, cwd=LEAN_DIR,
-                          env={**__import__("os").environ, "PATH": env_path + ":/usr/bin:/bin"},
-                          capture_output=True, text=True, timeout=timeout)
+    proc = subprocess.run(
+        cmd,
+        cwd=LEAN_DIR,
+        env={**__import__("os").environ, "PATH": env_path + ":/usr/bin:/bin"},
+        capture_output=True,
+        text=True,
+        timeout=timeout,
+    )
     log = (proc.stdout or "") + (proc.stderr or "")
     log_path.write_text(log)
 
@@ -218,8 +248,10 @@ def check(module_name: str, source: str, *, log_dir: Path | None = None,
         open_goals = errors[:20]
     else:
         status = "PARTIAL"
-        open_goals = errors[:20] or [l.strip() for l in log.splitlines()
-                                     if "unsolved goals" in l or "sorry" in l][:20]
+        open_goals = (
+            errors[:20]
+            or [l.strip() for l in log.splitlines() if "unsolved goals" in l or "sorry" in l][:20]
+        )
 
     if audit_bad and status == "VERIFIED":
         status = "FAILED"

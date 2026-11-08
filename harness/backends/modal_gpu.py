@@ -21,10 +21,20 @@ from .base import Caps, ProfileJob, ProfileResult
 from .peaks import compute_peak, peaks
 
 APP_NAME = "kernel-harness"
-GPU_FUNCTIONS = {"H100": "run_job", "B200": "run_job_b200", "H200": "run_job_h200",
-                 "L4": "run_job_l4", "A100": "run_job_a100"}
-PROBE_FUNCTIONS = {"H100": "probe", "B200": "probe_b200", "H200": "probe_h200",
-                   "L4": "probe_l4", "A100": "probe_a100"}
+GPU_FUNCTIONS = {
+    "H100": "run_job",
+    "B200": "run_job_b200",
+    "H200": "run_job_h200",
+    "L4": "run_job_l4",
+    "A100": "run_job_a100",
+}
+PROBE_FUNCTIONS = {
+    "H100": "probe",
+    "B200": "probe_b200",
+    "H200": "probe_h200",
+    "L4": "probe_l4",
+    "A100": "probe_a100",
+}
 
 
 def _caps_path(gpu: str) -> Path:
@@ -70,27 +80,48 @@ class ModalBackend:
         if cached.exists():
             try:
                 data = json.loads(cached.read_text())
-                self._caps = Caps(**{k: data[k] for k in
-                                     ("gpu", "device_name", "arch", "sm_count",
-                                      "peak_bw_gbps", "peak_tflops", "ncu")})
+                self._caps = Caps(
+                    **{
+                        k: data[k]
+                        for k in (
+                            "gpu",
+                            "device_name",
+                            "arch",
+                            "sm_count",
+                            "peak_bw_gbps",
+                            "peak_tflops",
+                            "ncu",
+                        )
+                    }
+                )
                 return self._caps
             except Exception:
                 pass
         try:
             data = self._call("probe", {})
             self._caps = Caps(
-                gpu=self.gpu, device_name=data["device_name"], arch=data["arch"],
-                sm_count=int(data["sm_count"]), peak_bw_gbps=float(data["peak_bw_gbps"]),
-                peak_tflops=float(data["peak_tflops"]), ncu=bool(data["ncu"]))
+                gpu=self.gpu,
+                device_name=data["device_name"],
+                arch=data["arch"],
+                sm_count=int(data["sm_count"]),
+                peak_bw_gbps=float(data["peak_bw_gbps"]),
+                peak_tflops=float(data["peak_tflops"]),
+                ncu=bool(data["ncu"]),
+            )
             cached.parent.mkdir(parents=True, exist_ok=True)
             cached.write_text(json.dumps(data, indent=2))
             return self._caps
         except Exception:
             p = peaks(self.gpu)
-            return Caps(gpu=self.gpu, device_name=p["device"] + " (unprobed)",
-                        arch=p["arch"], sm_count=int(p["sm_count"]),
-                        peak_bw_gbps=float(p["bw"]), peak_tflops=float(p["tflops_tf32"]),
-                        ncu=False)
+            return Caps(
+                gpu=self.gpu,
+                device_name=p["device"] + " (unprobed)",
+                arch=p["arch"],
+                sm_count=int(p["sm_count"]),
+                peak_bw_gbps=float(p["bw"]),
+                peak_tflops=float(p["tflops_tf32"]),
+                ncu=False,
+            )
 
     # -- transport -------------------------------------------------------
     def _call(self, kind: str, payload: dict) -> dict:
@@ -134,7 +165,9 @@ class ModalBackend:
             try:
                 raw = self._call("job", payload)
                 if raw.get("error"):
-                    raise RuntimeError(f"modal job error: {raw['error']} {raw.get('log', '')[:800]}")
+                    raise RuntimeError(
+                        f"modal job error: {raw['error']} {raw.get('log', '')[:800]}"
+                    )
                 data = self._shape_profile(raw, job, caps)
                 self._apply_numeric(raw, job, data)
                 return ProfileResult(data)
@@ -160,8 +193,10 @@ class ModalBackend:
             got = np.frombuffer(base64.b64decode(blob), dtype="<i4")
         else:
             got = np.frombuffer(base64.b64decode(blob), dtype="<f4")
-        want = reference.reference_for_job(job)
-        status, abs_err, rel_err = reference.compare_for_job(job, got, )
+        status, abs_err, rel_err = reference.compare_for_job(
+            job,
+            got,
+        )
         data["numeric"] = status
         data["max_abs_err"] = abs_err
         data["max_rel_err"] = rel_err
@@ -171,8 +206,13 @@ class ModalBackend:
         peak_tflops = compute_peak(self.gpu, job.dtype, bool(raw.get("tensor_cores")))
         eff_bw = (job.bytes_moved / 1e9) / (p50 / 1e3) if job.bytes_moved and p50 > 0 else 0.0
         tflops = (job.flops / 1e12) / (p50 / 1e3) if job.flops and p50 > 0 else 0.0
-        sol = max(eff_bw / caps.peak_bw_gbps if job.bytes_moved else 0.0,
-                  tflops / peak_tflops if job.flops else 0.0) * 100.0
+        sol = (
+            max(
+                eff_bw / caps.peak_bw_gbps if job.bytes_moved else 0.0,
+                tflops / peak_tflops if job.flops else 0.0,
+            )
+            * 100.0
+        )
         intensity = (job.flops / job.bytes_moved) if job.bytes_moved else 0.0
         knee = (peak_tflops * 1e12) / (caps.peak_bw_gbps * 1e9)
         regs = int(raw.get("regs_per_thread") or 0)
@@ -227,7 +267,6 @@ class ModalBackend:
 # ---------------------------------------------------------------------------
 
 import base64  # noqa: E402
-import os  # noqa: E402
 import subprocess  # noqa: E402
 
 import modal  # noqa: E402
@@ -253,25 +292,38 @@ _ARCH = {"H100": "sm_90a", "H200": "sm_90a", "B200": "sm_100a", "A100": "sm_80",
 
 
 def _probe_impl(gpu: str) -> dict:
-    import subprocess
 
     name = subprocess.run(
-        ["nvidia-smi", "--query-gpu=name,memory.total,clocks.max.memory,clocks.max.sm",
-         "--format=csv,noheader,nounits"], capture_output=True, text=True).stdout.strip()
+        [
+            "nvidia-smi",
+            "--query-gpu=name,memory.total,clocks.max.memory,clocks.max.sm",
+            "--format=csv,noheader,nounits",
+        ],
+        capture_output=True,
+        text=True,
+    ).stdout.strip()
     parts = [p.strip() for p in name.split(",")]
     device = parts[0] if parts else "unknown"
-    clock_mhz = float(parts[2]) if len(parts) > 2 and parts[2].replace('.', '', 1).isdigit() else 0.0
+    clock_mhz = (
+        float(parts[2]) if len(parts) > 2 and parts[2].replace(".", "", 1).isdigit() else 0.0
+    )
     p = peaks(gpu)
     # bus width is not exposed by nvidia-smi; use the tabulated peak bandwidth.
     bw = p["bw"]
     ncu_ok = False
     try:
         src = "#include <cstdio>\n__global__ void k(){}\nint main(){k<<<1,1>>>();return 0;}\n"
-        open("/tmp/p.cu", "w").write(src)
-        subprocess.run(["nvcc", "-arch", _ARCH.get(gpu, "sm_90a"), "/tmp/p.cu", "-o", "/tmp/p"],
-                       check=True, capture_output=True)
-        r = subprocess.run(["ncu", "--csv", "--metrics", "gpu__time_duration.sum",
-                            "/tmp/p"], capture_output=True, text=True)
+        Path("/tmp/p.cu").write_text(src)
+        subprocess.run(
+            ["nvcc", "-arch", _ARCH.get(gpu, "sm_90a"), "/tmp/p.cu", "-o", "/tmp/p"],
+            check=True,
+            capture_output=True,
+        )
+        r = subprocess.run(
+            ["ncu", "--csv", "--metrics", "gpu__time_duration.sum", "/tmp/p"],
+            capture_output=True,
+            text=True,
+        )
         ncu_ok = r.returncode == 0 and "gpu__time_duration" in (r.stdout or "")
     except Exception:
         ncu_ok = False
@@ -289,7 +341,6 @@ def _probe_impl(gpu: str) -> dict:
 
 def _run_job_impl(payload: dict) -> dict:
     import json
-    import subprocess
     import tempfile
     from pathlib import Path
 
@@ -301,8 +352,18 @@ def _run_job_impl(payload: dict) -> dict:
     driver = payload["driver"]
     (work / "bench_main.cu").write_text(driver)
 
-    compile_cmd = ["nvcc", "-O3", f"-arch={arch}", "-lineinfo", "-Xptxas", "-v",
-                   "bench_main.cu", "-o", "bench", "-lm"]
+    compile_cmd = [
+        "nvcc",
+        "-O3",
+        f"-arch={arch}",
+        "-lineinfo",
+        "-Xptxas",
+        "-v",
+        "bench_main.cu",
+        "-o",
+        "bench",
+        "-lm",
+    ]
     comp = subprocess.run(compile_cmd, cwd=work, capture_output=True, text=True)
     if comp.returncode != 0:
         return {"error": "compile failed", "log": comp.stderr[-6000:]}
@@ -323,38 +384,68 @@ def _run_job_impl(payload: dict) -> dict:
     # The variant's PTX artifact: compile the kernel together with the generated
     # header (the source alone does not know `HarnessParams`).
     (work / "kernel_tu.cu").write_text('#include "harness_gen.h"\n' + payload["source"])
-    subprocess.run(["nvcc", f"-arch={arch}", "-ptx", "kernel_tu.cu", "-o", "kernel.ptx"],
-                   cwd=work, capture_output=True, text=True)
+    subprocess.run(
+        ["nvcc", f"-arch={arch}", "-ptx", "kernel_tu.cu", "-o", "kernel.ptx"],
+        cwd=work,
+        capture_output=True,
+        text=True,
+    )
     ptx_text = (work / "kernel.ptx").read_text() if (work / "kernel.ptx").exists() else ""
 
-    run = subprocess.run(["./bench", "out.bin", str(payload["warmup"]), str(payload["reps"])],
-                         cwd=work, capture_output=True, text=True, timeout=1800)
+    run = subprocess.run(
+        ["./bench", "out.bin", str(payload["warmup"]), str(payload["reps"])],
+        cwd=work,
+        capture_output=True,
+        text=True,
+        timeout=1800,
+    )
     if run.returncode != 0:
-        return {"error": f"run failed (exit {run.returncode})",
-                "log": ("STDOUT:\n" + run.stdout + "\nSTDERR:\n" + run.stderr)[-6000:],
-                "compile_log": comp.stderr[-2000:], "ptx": ptx_text}
+        return {
+            "error": f"run failed (exit {run.returncode})",
+            "log": ("STDOUT:\n" + run.stdout + "\nSTDERR:\n" + run.stderr)[-6000:],
+            "compile_log": comp.stderr[-2000:],
+            "ptx": ptx_text,
+        }
     result = {}
     for line in run.stdout.splitlines():
         if line.startswith("HARNESS_RESULT "):
-            result = json.loads(line[len("HARNESS_RESULT "):])
+            result = json.loads(line[len("HARNESS_RESULT ") :])
     if not result:
         return {"error": "no result line", "log": run.stdout[-4000:], "ptx": ptx_text}
 
     counters = None
     if payload.get("ncu"):
-        metrics = ",".join([
-            "gpu__time_duration.sum", "dram__bytes.sum",
-            "l1tex__average_t_sectors_per_request_pipe_lsu_mem_global_op_ld.ratio",
-            "smsp__warp_issue_stalled_long_scoreboard_per_warp_active.pct",
-            "sm__warps_active.avg.pct_of_peak_sustained_active"])
+        metrics = ",".join(
+            [
+                "gpu__time_duration.sum",
+                "dram__bytes.sum",
+                "l1tex__average_t_sectors_per_request_pipe_lsu_mem_global_op_ld.ratio",
+                "smsp__warp_issue_stalled_long_scoreboard_per_warp_active.pct",
+                "sm__warps_active.avg.pct_of_peak_sustained_active",
+            ]
+        )
         ncur = subprocess.run(
-            ["ncu", "--csv", "--metrics", metrics, "./bench", "out_ncu.bin",
-             str(payload["warmup"]), str(payload["reps"])],
-            cwd=work, capture_output=True, text=True, timeout=1800)
+            [
+                "ncu",
+                "--csv",
+                "--metrics",
+                metrics,
+                "./bench",
+                "out_ncu.bin",
+                str(payload["warmup"]),
+                str(payload["reps"]),
+            ],
+            cwd=work,
+            capture_output=True,
+            text=True,
+            timeout=1800,
+        )
         vals = {}
         for line in ncur.stdout.splitlines():
             parts = [p.strip().strip('"') for p in line.split(",")]
-            if len(parts) >= 4 and parts[-2].startswith(("gpu__", "dram__", "l1tex__", "smsp__", "sm__")):
+            if len(parts) >= 4 and parts[-2].startswith(
+                ("gpu__", "dram__", "l1tex__", "smsp__", "sm__")
+            ):
                 try:
                     vals[parts[-2]] = float(parts[-1])
                 except ValueError:
@@ -362,16 +453,17 @@ def _run_job_impl(payload: dict) -> dict:
         if vals:
             counters = {
                 "sectors_per_request": vals.get(
-                    "l1tex__average_t_sectors_per_request_pipe_lsu_mem_global_op_ld.ratio"),
+                    "l1tex__average_t_sectors_per_request_pipe_lsu_mem_global_op_ld.ratio"
+                ),
                 "long_scoreboard_pct": vals.get(
-                    "smsp__warp_issue_stalled_long_scoreboard_per_warp_active.pct"),
+                    "smsp__warp_issue_stalled_long_scoreboard_per_warp_active.pct"
+                ),
                 "warps_active_pct": vals.get("sm__warps_active.avg.pct_of_peak_sustained_active"),
                 "dram_bytes": vals.get("dram__bytes.sum"),
             }
 
     baseline = None
     try:
-        import torch
         baseline = _torch_baseline(payload)
     except Exception as exc:  # baseline is optional; the gate fails closed
         baseline = {"name": "torch", "p50_ms": None, "error": str(exc)[:200]}
@@ -393,7 +485,6 @@ def _run_job_impl(payload: dict) -> dict:
 
 def _torch_baseline(payload: dict) -> dict:
     """Time the equivalent torch operation on the same GPU."""
-    import time
 
     import torch
 
@@ -406,7 +497,7 @@ def _torch_baseline(payload: dict) -> dict:
         q = torch.randn(rows, d, device=dev, dtype=torch.float32)
         k = torch.randn(t, d, device=dev, dtype=torch.float32)
         v = torch.randn(t, d, device=dev, dtype=torch.float32)
-        fn = lambda: torch.softmax(q @ k.transpose(0, 1) / d ** 0.5, dim=-1) @ v
+        fn = lambda: torch.softmax(q @ k.transpose(0, 1) / d**0.5, dim=-1) @ v
     elif "M" in shape:
         m, kk = int(shape["M"]), int(shape["K"])
         nn = int(shape.get("N_out", kk))
@@ -507,4 +598,4 @@ def main(payload_file: str = "") -> None:
     """
     print(probe.remote("{}"))
     if payload_file:
-        print(run_job.remote(open(payload_file).read()))
+        print(run_job.remote(Path(payload_file).read_text()))
