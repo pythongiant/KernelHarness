@@ -1,16 +1,27 @@
+# runtime state and the ledger repository (a separate git repo, see docs/operations.md)
 .harness/
-web/node_modules/
-web/tsconfig.tsbuildinfo
-web/dist/
-lean/.lake/
-lean/Harness/Generated/
-lean/.proof-logs/
+ledgers/
+
+# python
 __pycache__/
 *.pyc
 .venv/
+.pytest_cache/
+.ruff_cache/
+
+# lean
+lean/.lake/
+lean/Harness/Generated/
+lean/.proof-logs/
+.lean-build/
+
+# web
+web/node_modules/
+web/dist/
+web/tsconfig.tsbuildinfo
+
+# build outputs
 *.o
 *.ptx
-!ledgers/**/*.ptx
+!examples/runs/**/*.ptx
 !tests/fixtures/*.ptx
-.lean-build/
-/proof/

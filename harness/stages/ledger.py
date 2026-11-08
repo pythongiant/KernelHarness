@@ -1,8 +1,12 @@
-"""LEDGER stage: commit the round's artifacts to the git tree.
+"""LEDGER stage: commit each round's artifacts to the ledger repository.
 
-Each round writes `ledgers/runs/<run_id>/round-<n>/` with the profile, diagnosis,
-hypotheses, kernel source/PTX, diff and proof artifacts, then commits with a fixed
-message format, and regenerates `ledgers/REPORT.md` and `ledgers/index.json`.
+The ledger is a git repository of its own, rooted at `LEDGER_DIR` (`ledgers/` by
+default, ignored by the source tree). Keeping it separate means a run can never stage
+or commit unrelated changes in the working copy it was started from.
+
+Each round writes `runs/<run_id>/round-<n>/` with the profile, diagnosis, hypotheses,
+kernel source and PTX, diff and proof artifacts, commits it with a fixed message
+format, and regenerates the ledger-wide `REPORT.md` and `index.json`.
 """
 
 from __future__ import annotations
@@ -10,43 +14,50 @@ from __future__ import annotations
 import difflib
 import json
 import os
-import shutil
 import subprocess
 from pathlib import Path
 
-from ..config import LEDGER_DIR, ROOT
+from ..config import LEDGER_DIR
 
 LEDGER_RUNS = LEDGER_DIR / "runs"
 
 
 def _git(*args: str, check: bool = True) -> str:
-    proc = subprocess.run(["git", *args], cwd=ROOT, capture_output=True, text=True)
+    """Run git inside the ledger repository and return stripped stdout."""
+    proc = subprocess.run(["git", *args], cwd=LEDGER_DIR, capture_output=True, text=True)
     if check and proc.returncode != 0:
         raise RuntimeError(f"git {' '.join(args)} failed: {proc.stderr.strip()}")
     return proc.stdout.strip()
 
 
 def ensure_repo() -> None:
-    """Make sure the ledger tree is a git repository.
+    """Initialise `LEDGER_DIR` as a standalone git repository if it is not one yet.
 
     The operator's identity is never overridden: defaults are supplied only when git
     has none, from `HARNESS_GIT_NAME` / `HARNESS_GIT_EMAIL` (or a neutral fallback).
     """
-    if not (ROOT / ".git").exists():
-        _git("init")
+    LEDGER_DIR.mkdir(parents=True, exist_ok=True)
+    if not (LEDGER_DIR / ".git").exists():
+        _git("init", "-q")
     if not _git("config", "user.name", check=False):
         _git("config", "user.name", os.environ.get("HARNESS_GIT_NAME", "kernel-harness"))
     if not _git("config", "user.email", check=False):
-        _git("config", "user.email",
-             os.environ.get("HARNESS_GIT_EMAIL", "kernel-harness@localhost"))
+        _git(
+            "config", "user.email", os.environ.get("HARNESS_GIT_EMAIL", "kernel-harness@localhost")
+        )
 
 
 def diff_text(before: str, after: str, name: str = "kernel.cu") -> str:
     if before == after:
         return ""
-    return "".join(difflib.unified_diff(
-        before.splitlines(keepends=True), after.splitlines(keepends=True),
-        fromfile=f"a/{name}", tofile=f"b/{name}"))
+    return "".join(
+        difflib.unified_diff(
+            before.splitlines(keepends=True),
+            after.splitlines(keepends=True),
+            fromfile=f"a/{name}",
+            tofile=f"b/{name}",
+        )
+    )
 
 
 def write_round_dir(run_id: str, n: int, artifacts: dict) -> Path:
@@ -69,51 +80,71 @@ def write_round_dir(run_id: str, n: int, artifacts: dict) -> Path:
     return d
 
 
-def commit_round(run_id: str, n: int, kernel_id: str, codes: list[str], transform_id: str | None,
-                 sol_before: float, sol_after: float, p50_before: float, p50_after: float,
-                 proof_status: str, artifacts: dict) -> tuple[str, str]:
+def commit_round(
+    run_id: str,
+    n: int,
+    kernel_id: str,
+    codes: list[str],
+    transform_id: str | None,
+    sol_before: float,
+    sol_after: float,
+    p50_before: float,
+    p50_after: float,
+    proof_status: str,
+    artifacts: dict,
+) -> tuple[str, str]:
     """Write artifacts, commit them, and return (sha, message)."""
     ensure_repo()
     write_round_dir(run_id, n, artifacts)
-    msg = (f"round {n}: {kernel_id} [{','.join(codes) or 'none'}] {transform_id or 'baseline'} — "
-           f"sol {sol_before:.1f}%→{sol_after:.1f}%, "
-           f"p50 {p50_before:.3f}ms→{p50_after:.3f}ms, proof {proof_status}")
-    body = "\n".join([
-        f"variant: {artifacts['variant_id']}",
-        f"hypotheses: {', '.join(artifacts.get('hypothesis_ids') or ['-'])}",
-        f"artifacts: ledgers/runs/{run_id}/round-{n:02d}/",
-    ])
-    _git("add", "-A")
-    proc = subprocess.run(["git", "commit", "-m", msg, "-m", body], cwd=ROOT,
-                          capture_output=True, text=True)
+    msg = (
+        f"round {n}: {kernel_id} [{','.join(codes) or 'none'}] {transform_id or 'baseline'} — "
+        f"sol {sol_before:.1f}%→{sol_after:.1f}%, "
+        f"p50 {p50_before:.3f}ms→{p50_after:.3f}ms, proof {proof_status}"
+    )
+    body = "\n".join(
+        [
+            f"variant: {artifacts['variant_id']}",
+            f"hypotheses: {', '.join(artifacts.get('hypothesis_ids') or ['-'])}",
+            f"artifacts: runs/{run_id}/round-{n:02d}/",
+        ]
+    )
+    return _commit_all(msg, body), msg
+
+
+def _commit_all(subject: str, body: str = "") -> str:
+    """Stage everything in the ledger repository, commit it, and return HEAD's sha."""
+    _git("add", "-A", "--", ".")
+    args = ["git", "commit", "-q", "-m", subject] + (["-m", body] if body else [])
+    proc = subprocess.run(args, cwd=LEDGER_DIR, capture_output=True, text=True)
     if proc.returncode != 0 and "nothing to commit" not in (proc.stdout + proc.stderr):
         raise RuntimeError(f"git commit failed: {proc.stderr.strip()}")
-    sha = _git("rev-parse", "HEAD", check=False)
-    return sha, msg
+    return _git("rev-parse", "HEAD", check=False)
 
 
 def rebuild_index(preferred: str | None = None) -> None:
     """Rewrite `ledgers/REPORT.md` and `ledgers/index.json` from the run tree."""
     LEDGER_DIR.mkdir(parents=True, exist_ok=True)
     index = []
-    for d in (sorted(LEDGER_RUNS.iterdir()) if LEDGER_RUNS.is_dir() else []):
+    for d in sorted(LEDGER_RUNS.iterdir()) if LEDGER_RUNS.is_dir() else []:
         if not d.is_dir():
             continue
         m = _run_meta(d)
         if not m:
             continue
-        index.append({
-            "run_id": d.name,
-            "kernel_id": m.get("kernel_id"),
-            "gpu": m.get("gpu"),
-            "backend": m.get("backend"),
-            "status": m.get("status"),
-            "stop_reason": m.get("stop_reason"),
-            "rounds": m.get("rows"),
-            "best_sol_pct": m.get("best_sol_pct"),
-            "verified_rounds": m.get("verified"),
-            "report": f"runs/{d.name}/REPORT.md",
-        })
+        index.append(
+            {
+                "run_id": d.name,
+                "kernel_id": m.get("kernel_id"),
+                "gpu": m.get("gpu"),
+                "backend": m.get("backend"),
+                "status": m.get("status"),
+                "stop_reason": m.get("stop_reason"),
+                "rounds": m.get("rows"),
+                "best_sol_pct": m.get("best_sol_pct"),
+                "verified_rounds": m.get("verified"),
+                "report": f"runs/{d.name}/REPORT.md",
+            }
+        )
     if preferred:
         index.sort(key=lambda r: (r["run_id"] != preferred, r["run_id"]))
     else:
@@ -141,7 +172,8 @@ def rebuild_index(preferred: str | None = None) -> None:
             f"| `{r['run_id']}` | {r['kernel_id'] or 'n/a'} | {r['backend'] or 'n/a'} | "
             f"{status} | {r['rounds'] if r['rounds'] is not None else ''} | "
             f"{r['verified_rounds'] if r['verified_rounds'] is not None else ''} | "
-            f"{best_s} | [{r['run_id']}]({r['report']}) |")
+            f"{best_s} | [{r['run_id']}]({r['report']}) |"
+        )
     (LEDGER_DIR / "REPORT.md").write_text("\n".join(top) + "\n")
     (LEDGER_DIR / "index.json").write_text(json.dumps(index, indent=2) + "\n")
 
@@ -154,7 +186,8 @@ def _round_table(rows: list[dict]) -> list[str]:
     for r in rows:
         lines.append(
             f"| {r['n']} | `{r.get('transform_id') or 'baseline'}` | {r.get('sol_pct', 0):.1f} | "
-            f"{r.get('p50_ms', 0):.3f} | {r.get('proof')} | `{(r.get('sha') or '')[:12]}` |")
+            f"{r.get('p50_ms', 0):.3f} | {r.get('proof')} | `{(r.get('sha') or '')[:12]}` |"
+        )
     return lines
 
 
@@ -165,7 +198,7 @@ def _run_meta(run_dir: Path) -> dict:
         return {}
     try:
         return json.loads(path.read_text())
-    except Exception:
+    except (OSError, json.JSONDecodeError):
         return {}
 
 
@@ -201,3 +234,8 @@ def regenerate_report(rows: list[dict], run_id: str, *, meta: dict | None = None
     (run_dir / "summary.json").write_text(json.dumps(summary, indent=2) + "\n")
 
     rebuild_index(preferred=run_id)
+    ensure_repo()
+    _commit_all(
+        f"report: {run_id} {summary.get('kernel_id', '')} "
+        f"{summary.get('stop_reason') or ''}".strip()
+    )

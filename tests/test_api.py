@@ -1,4 +1,3 @@
-import json
 import time
 
 from fastapi.testclient import TestClient
@@ -6,6 +5,7 @@ from fastapi.testclient import TestClient
 
 def _client(monkeypatch):
     import harness.server as server
+
     monkeypatch.setattr(server, "_conn", None)
     monkeypatch.setattr(server, "_subscribers", {})
     return TestClient(server.app)
@@ -16,8 +16,7 @@ def test_registry_endpoint(monkeypatch):
         r = c.get("/api/registry")
         assert r.status_code == 200
         ids = {k["id"] for k in r.json()["kernels"]}
-        assert {"elementwise_affine", "matmul_scalar", "matmul_tiled",
-                "attention_scalar"} <= ids
+        assert {"elementwise_affine", "matmul_scalar", "matmul_tiled", "attention_scalar"} <= ids
         ew = [k for k in r.json()["kernels"] if k["id"] == "elementwise_affine"][0]
         # the traffic model is read x plus write out only: 8 bytes per s32 element
         assert ew["sol"]["bytes_resolved"] == 8 * 4194304
@@ -25,11 +24,17 @@ def test_registry_endpoint(monkeypatch):
 
 
 def test_run_lifecycle_and_artifacts(isolated, monkeypatch):
-    conn, repo, ledger_dir = isolated
+    conn, ledger_dir = isolated
     with _client(monkeypatch) as c:
-        r = c.post("/api/runs", json={"kernel_id": "elementwise_affine", "gpu": "H100",
-                                      "backend": "sim",
-                                      "sla": {"max_rounds": 2, "stall_rounds": 2}})
+        r = c.post(
+            "/api/runs",
+            json={
+                "kernel_id": "elementwise_affine",
+                "gpu": "H100",
+                "backend": "sim",
+                "sla": {"max_rounds": 2, "stall_rounds": 2},
+            },
+        )
         assert r.status_code == 200
         run_id = r.json()["run_id"]
 
@@ -43,8 +48,11 @@ def test_run_lifecycle_and_artifacts(isolated, monkeypatch):
         assert snap["status"] != "running", snap["status"]
         assert snap["rounds"], "no rounds recorded"
         assert snap["commits"], "no ledger commit"
-        variant_id = snap["commits"][0]["variant_id"] if "variant_id" in snap["commits"][0] \
+        variant_id = (
+            snap["commits"][0]["variant_id"]
+            if "variant_id" in snap["commits"][0]
             else snap["variants"][-1]["id"]
+        )
 
         diff = c.get(f"/api/variants/{variant_id}/diff")
         assert diff.status_code == 200
@@ -64,15 +72,14 @@ def test_run_lifecycle_and_artifacts(isolated, monkeypatch):
 
         # the snapshot's events cover every stage of the loop
         stages = {e["stage"] for e in snap["events"]}
-        assert {"DIAGNOSE", "RESEARCH", "OPTIMIZE", "VERIFY", "PROFILE",
-                "LEDGER"} <= stages
+        assert {"DIAGNOSE", "RESEARCH", "OPTIMIZE", "VERIFY", "PROFILE", "LEDGER"} <= stages
 
         # SSE replay yields at least six stage frames
         frames = []
         with c.stream("GET", f"/api/runs/{run_id}/stream") as stream:
             for line in stream.iter_lines():
                 if line.startswith("event: "):
-                    frames.append(line[len("event: "):])
+                    frames.append(line[len("event: ") :])
                 if frames.count("stage") >= 6:
                     break
         assert frames.count("stage") >= 6

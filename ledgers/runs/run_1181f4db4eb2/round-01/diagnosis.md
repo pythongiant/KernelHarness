@@ -1,2 +1,0 @@
-- **LOW_OCCUPANCY** (high): `occupancy_pct = 25.0%` is below the 50% threshold; the profiler names `simulated` as the limiter (32 registers/thread, 0 B shared memory/block).
-- **MEM_BW_BOUND** (high): Roofline says memory-bound at `10.00%` of peak: `eff_bw_gbps = 335.00` of `3350.00` GB/s, moving `33554432` bytes in `0.10 ms`.
